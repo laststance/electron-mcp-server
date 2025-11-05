@@ -48,7 +48,7 @@ Configure the security level and other settings through your MCP client configur
     "servers": {
       "electron": {
         "command": "npx",
-        "args": ["-y", "electron-mcp-server"],
+        "args": ["-y", "@laststance/electron-mcp-server"],
         "env": {
           "SECURITY_LEVEL": "balanced",
           "SCREENSHOT_ENCRYPTION_KEY":"your-32-byte-hex-string"
@@ -65,7 +65,7 @@ Configure the security level and other settings through your MCP client configur
   "mcpServers": {
     "electron": {
       "command": "npx",
-      "args": ["-y", "electron-mcp-server"],
+      "args": ["-y", "@laststance/electron-mcp-server"],
       "env": {
         "SECURITY_LEVEL": "balanced",
         "SCREENSHOT_ENCRYPTION_KEY":"your-32-byte-hex-string"
@@ -269,7 +269,7 @@ Add to your VS Code MCP settings:
     "servers": {
       "electron": {
         "command": "npx",
-        "args": ["-y", "electron-mcp-server"],
+        "args": ["-y", "@laststance/electron-mcp-server"],
         "env": {
           "SECURITY_LEVEL": "balanced",
           "SCREENSHOT_ENCRYPTION_KEY": "your-32-byte-hex-string-here"
@@ -295,7 +295,7 @@ Cursor IDE supports MCP servers through its configuration file. Add to your Curs
   "mcpServers": {
     "electron": {
       "command": "npx",
-      "args": ["-y", "electron-mcp-server"],
+      "args": ["-y", "@laststance/electron-mcp-server"],
       "env": {
         "SECURITY_LEVEL": "balanced",
         "SCREENSHOT_ENCRYPTION_KEY": "your-32-byte-hex-string-here"
@@ -327,7 +327,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "electron": {
       "command": "npx",
-      "args": ["-y", "electron-mcp-server"],
+      "args": ["-y", "@laststance/electron-mcp-server"],
       "env": {
         "SECURITY_LEVEL": "balanced",
         "SCREENSHOT_ENCRYPTION_KEY": "your-32-byte-hex-string-here"
@@ -340,7 +340,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ### Global Installation
 
 ```bash
-npm install -g electron-mcp-server
+npm install -g @laststance/electron-mcp-server
 ```
 
 ## 🔧 Available Tools
