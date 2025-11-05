@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Demo App</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🚀 Electron MCP Server Demo</h1>
+        <p class="subtitle">
+          Test all MCP Server features with this interactive demo app
+        </p>
+      </header>
+
+      <!-- Basic Actions Section -->
+      <section class="card">
+        <h2>📌 Basic Actions</h2>
+        <p class="description">
+          Test simple button clicks with
+          <code>click_by_text</code> or <code>click_by_selector</code>
+        </p>
+        <div class="button-group">
+          <button
+            id="create-btn"
+            class="btn btn-primary"
+            data-testid="create-button"
+          >
+            Create New Item
+          </button>
+          <button
+            id="submit-btn"
+            class="btn btn-success"
+            data-testid="submit-button"
+          >
+            Submit Form
+          </button>
+          <button
+            id="cancel-btn"
+            class="btn btn-secondary"
+            data-testid="cancel-button"
+          >
+            Cancel Operation
+          </button>
+        </div>
+        <div id="action-result" class="result-box"></div>
+      </section>
+
+      <!-- Form Section -->
+      <section class="card">
+        <h2>📝 Form Inputs</h2>
+        <p class="description">
+          Test input filling with
+          <code>fill_input</code> using placeholder or selector
+        </p>
+        <form id="demo-form">
+          <div class="form-group">
+            <label for="name">Name:</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              placeholder="Enter your name"
+              data-testid="name-input"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email:</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="Enter your email"
+              data-testid="email-input"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="age">Age:</label>
+            <input
+              type="number"
+              id="age"
+              name="age"
+              placeholder="Enter your age"
+              min="0"
+              max="150"
+              data-testid="age-input"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description:</label>
+            <textarea
+              id="description"
+              name="description"
+              placeholder="Enter a description"
+              rows="4"
+              data-testid="description-textarea"
+            ></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" data-testid="form-submit">
+            Submit Form
+          </button>
+        </form>
+        <div id="form-result" class="result-box"></div>
+      </section>
+
+      <!-- Selection Section -->
+      <section class="card">
+        <h2>🔽 Selection Inputs</h2>
+        <p class="description">
+          Test dropdown and checkbox selection with <code>select_option</code>
+        </p>
+
+        <div class="form-group">
+          <label for="country">Country:</label>
+          <select id="country" name="country" data-testid="country-select">
+            <option value="">Select a country</option>
+            <option value="us">United States</option>
+            <option value="uk">United Kingdom</option>
+            <option value="ca">Canada</option>
+            <option value="au">Australia</option>
+            <option value="jp">Japan</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Gender:</label>
+          <div class="radio-group">
+            <label>
+              <input
+                type="radio"
+                name="gender"
+                value="male"
+                data-testid="gender-male"
+              />
+              Male
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="gender"
+                value="female"
+                data-testid="gender-female"
+              />
+              Female
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="gender"
+                value="other"
+                data-testid="gender-other"
+              />
+              Other
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              id="terms"
+              name="terms"
+              data-testid="terms-checkbox"
+            />
+            I agree to the terms and conditions
+          </label>
+        </div>
+
+        <button
+          id="selection-submit"
+          class="btn btn-primary"
+          data-testid="selection-submit"
+        >
+          Submit Selection
+        </button>
+        <div id="selection-result" class="result-box"></div>
+      </section>
+
+      <!-- Counter Section -->
+      <section class="card">
+        <h2>🔢 Counter Demo</h2>
+        <p class="description">
+          Test state management and multiple interactions
+        </p>
+        <div class="counter-container">
+          <button
+            id="decrement"
+            class="btn btn-secondary"
+            data-testid="decrement-button"
+          >
+            - Decrement
+          </button>
+          <div class="counter-display">
+            <span id="counter-value" data-testid="counter-value">0</span>
+          </div>
+          <button
+            id="increment"
+            class="btn btn-primary"
+            data-testid="increment-button"
+          >
+            + Increment
+          </button>
+        </div>
+        <button
+          id="reset-counter"
+          class="btn btn-secondary"
+          data-testid="reset-button"
+        >
+          Reset Counter
+        </button>
+      </section>
+
+      <!-- Event Log Section -->
+      <section class="card">
+        <h2>📋 Event Log</h2>
+        <p class="description">All actions are logged here for debugging</p>
+        <div id="event-log" class="event-log"></div>
+        <button
+          id="clear-log"
+          class="btn btn-secondary"
+          data-testid="clear-log-button"
+        >
+          Clear Log
+        </button>
+      </section>
+
+      <!-- Instructions Section -->
+      <section class="card info-card">
+        <h2>💡 MCP Server Usage</h2>
+        <div class="instructions">
+          <h3>Getting Started:</h3>
+          <ol>
+            <li>
+              Make sure this app is running with <code>npm run dev</code>
+            </li>
+            <li>Verify DevTools Protocol is enabled on port 9222</li>
+            <li>Use MCP tools to interact with this app</li>
+          </ol>
+
+          <h3>Example MCP Commands:</h3>
+          <pre><code>// Get page structure
+{
+  "command": "get_page_structure"
+}
+
+// Click button by text
+{
+  "command": "click_by_text",
+  "args": { "text": "Create New Item" }
+}
+
+// Fill input by placeholder
+{
+  "command": "fill_input",
+  "args": {
+    "placeholder": "Enter your name",
+    "value": "John Doe"
+  }
+}
+
+// Select country
+{
+  "command": "click_by_selector",
+  "args": { "selector": "#country" }
+}
+
+// Take screenshot
+take_screenshot()</code></pre>
+        </div>
+      </section>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,138 @@
+{
+  "name": "electron-mcp-server",
+  "description": "Model Context Protocol server for Electron application management",
+  "version": "1.0.0",
+  "usage": {
+    "claude_desktop": {
+      "config_path": "~/Library/Application Support/Claude/claude_desktop_config.json",
+      "config": {
+        "mcpServers": {
+          "electron": {
+            "command": "npx",
+            "args": ["-y", "electron-mcp-server"]
+          }
+        }
+      }
+    },
+    "vscode": {
+      "config": {
+        "mcp": {
+          "servers": {
+            "electron": {
+              "command": "npx",
+              "args": ["-y", "electron-mcp-server"]
+            }
+          }
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "launch_electron_app",
+      "description": "Launch an Electron application from a specified path",
+      "parameters": {
+        "appPath": {
+          "type": "string",
+          "description": "Path to the Electron application",
+          "required": true
+        },
+        "args": {
+          "type": "array",
+          "description": "Additional command line arguments",
+          "required": false
+        },
+        "devMode": {
+          "type": "boolean",
+          "description": "Launch in development mode with debugging",
+          "required": false
+        }
+      }
+    },
+    {
+      "name": "close_electron_app",
+      "description": "Close the currently running Electron application",
+      "parameters": {
+        "force": {
+          "type": "boolean",
+          "description": "Force close the application if unresponsive",
+          "required": false
+        }
+      }
+    },
+    {
+      "name": "get_electron_info",
+      "description": "Get information about the Electron installation and environment",
+      "parameters": {}
+    },
+    {
+      "name": "create_electron_project",
+      "description": "Create a new Electron project with a basic structure",
+      "parameters": {
+        "projectName": {
+          "type": "string",
+          "description": "Name of the new project",
+          "required": true
+        },
+        "projectPath": {
+          "type": "string",
+          "description": "Directory where to create the project",
+          "required": true
+        },
+        "template": {
+          "type": "string",
+          "description": "Project template (basic, react, vue, angular)",
+          "required": false,
+          "default": "basic"
+        }
+      }
+    },
+    {
+      "name": "build_electron_app",
+      "description": "Build an Electron application for distribution",
+      "parameters": {
+        "projectPath": {
+          "type": "string",
+          "description": "Path to the Electron project",
+          "required": true
+        },
+        "platform": {
+          "type": "string",
+          "description": "Target platform (win32, darwin, linux)",
+          "required": false
+        },
+        "arch": {
+          "type": "string",
+          "description": "Target architecture (x64, arm64, ia32)",
+          "required": false
+        },
+        "debug": {
+          "type": "boolean",
+          "description": "Build in debug mode",
+          "required": false
+        }
+      }
+    },
+    {
+      "name": "get_electron_process_info",
+      "description": "Get information about the currently running Electron process",
+      "parameters": {}
+    },
+    {
+      "name": "send_command_to_electron",
+      "description": "Send commands to the running Electron application (requires IPC setup)",
+      "parameters": {
+        "command": {
+          "type": "string",
+          "description": "Command to send",
+          "required": true
+        },
+        "args": {
+          "type": "any",
+          "description": "Command arguments",
+          "required": false
+        }
+      }
+    }
+  ]
+}

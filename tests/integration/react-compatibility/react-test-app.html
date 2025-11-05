@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React Click Test App</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .button { 
+            padding: 12px 24px; 
+            margin: 10px; 
+            background: #007acc; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 6px;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+        .button:hover { 
+            background: #005a9e; 
+        }
+        .button.success {
+            background: #28a745;
+        }
+        .button.success:hover {
+            background: #218838;
+        }
+        .result { 
+            margin: 20px 0; 
+            padding: 15px; 
+            background: #e9ecef; 
+            border-radius: 4px;
+            min-height: 50px;
+            border-left: 4px solid #007acc;
+        }
+        .counter {
+            display: inline-block;
+            background: #17a2b8;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function ReactClickTestApp() {
+            const [message, setMessage] = useState('Welcome! Click any button to test...');
+            const [counter, setCounter] = useState(0);
+
+            // This is the typical React button that causes the MCP click issue
+            const handleReactButtonClick = (e) => {
+                e.preventDefault(); // This is what causes the MCP issue!
+                setMessage('React button clicked! (preventDefault was called)');
+                setCounter(prev => prev + 1);
+                console.log('React button clicked with preventDefault');
+            };
+
+            // Normal button without preventDefault
+            const handleNormalButtonClick = (e) => {
+                setMessage('Normal button clicked! (no preventDefault)');
+                setCounter(prev => prev + 1);
+                console.log('Normal button clicked without preventDefault');
+            };
+
+            // Button that calls stopPropagation
+            const handleStopPropagationClick = (e) => {
+                e.stopPropagation();
+                setMessage('Stop propagation button clicked!');
+                setCounter(prev => prev + 1);
+                console.log('Button clicked with stopPropagation');
+            };
+
+            // Form submit handler (typical React pattern)
+            const handleFormSubmit = (e) => {
+                e.preventDefault(); // Standard form handling
+                setMessage('Form submitted! (preventDefault called on form)');
+                setCounter(prev => prev + 1);
+                console.log('Form submitted with preventDefault');
+            };
+
+            return (
+                <div className="container">
+                    <h1>React Click Test Application</h1>
+                    <p>This app demonstrates the React click issue with MCP Server</p>
+                    
+                    <div className="result">
+                        <strong>Status:</strong> {message}
+                        {counter > 0 && <span className="counter">{counter} clicks</span>}
+                    </div>
+
+                    <div>
+                        <h3>Test Buttons:</h3>
+                        
+                        {/* This button will fail with MCP due to preventDefault */}
+                        <button 
+                            id="react-button" 
+                            className="button" 
+                            onClick={handleReactButtonClick}
+                        >
+                            React Button (preventDefault)
+                        </button>
+
+                        {/* This button should work with MCP */}
+                        <button 
+                            id="normal-button" 
+                            className="button success" 
+                            onClick={handleNormalButtonClick}
+                        >
+                            Normal Button (no preventDefault)
+                        </button>
+
+                        {/* This button uses stopPropagation */}
+                        <button 
+                            id="stop-prop-button" 
+                            className="button" 
+                            onClick={handleStopPropagationClick}
+                        >
+                            Stop Propagation Button
+                        </button>
+                    </div>
+
+                    <div>
+                        <h3>Test Form (Input Detection):</h3>
+                        <form onSubmit={handleFormSubmit}>
+                            <div style={{marginBottom: '15px'}}>
+                                <label htmlFor="username" style={{display: 'block', marginBottom: '5px'}}>Username:</label>
+                                <input 
+                                    id="username"
+                                    name="username"
+                                    type="text" 
+                                    placeholder="Enter username..." 
+                                    style={{
+                                        padding: '8px 12px',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '16px',
+                                        width: '200px'
+                                    }}
+                                />
+                            </div>
+                            
+                            <div style={{marginBottom: '15px'}}>
+                                <label htmlFor="email" style={{display: 'block', marginBottom: '5px'}}>Email:</label>
+                                <input 
+                                    id="email"
+                                    name="email"
+                                    type="email" 
+                                    placeholder="user@example.com" 
+                                    style={{
+                                        padding: '8px 12px',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '16px',
+                                        width: '200px'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{marginBottom: '15px'}}>
+                                <label htmlFor="password" style={{display: 'block', marginBottom: '5px'}}>Password:</label>
+                                <input 
+                                    id="password"
+                                    name="password"
+                                    type="password" 
+                                    placeholder="Enter password..." 
+                                    style={{
+                                        padding: '8px 12px',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '16px',
+                                        width: '200px'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{marginBottom: '15px'}}>
+                                <label htmlFor="age" style={{display: 'block', marginBottom: '5px'}}>Age:</label>
+                                <input 
+                                    id="age"
+                                    name="age"
+                                    type="number" 
+                                    placeholder="25" 
+                                    style={{
+                                        padding: '8px 12px',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '16px',
+                                        width: '100px'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{marginBottom: '15px'}}>
+                                <label htmlFor="comments" style={{display: 'block', marginBottom: '5px'}}>Comments:</label>
+                                <textarea 
+                                    id="comments"
+                                    name="comments"
+                                    placeholder="Enter your comments..." 
+                                    rows="3"
+                                    style={{
+                                        padding: '8px 12px',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '16px',
+                                        width: '300px',
+                                        resize: 'vertical'
+                                    }}
+                                />
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                id="submit-button"
+                                className="button"
+                            >
+                                Submit Form (preventDefault)
+                            </button>
+                        </form>
+                    </div>
+
+                    <div style={{marginTop: '30px', fontSize: '14px', color: '#666'}}>
+                        <p><strong>Instructions for MCP Testing:</strong></p>
+                        <ul>
+                            <li>Try clicking "React Button" - this should work now (fix applied)</li>
+                            <li>Try clicking "Normal Button" - this should work fine</li>
+                            <li>Try clicking "Submit Form" - this should work now (fix applied)</li>
+                            <li>Try fill_input on username, email, password, age, comments fields</li>
+                            <li>Check browser console for click events</li>
+                            <li>Use get_page_structure to see if inputs are detected</li>
+                        </ul>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the React app
+        ReactDOM.render(<ReactClickTestApp />, document.getElementById('root'));
+
+        // Add global click listener to monitor all clicks
+        document.addEventListener('click', (e) => {
+            console.log('Global click detected:', {
+                target: e.target.tagName,
+                id: e.target.id,
+                defaultPrevented: e.defaultPrevented,
+                bubbles: e.bubbles,
+                cancelable: e.cancelable
+            });
+        });
+    </script>
+</body>
+</html>

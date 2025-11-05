@@ -1,0 +1,38 @@
+# Source files (only publish dist)
+src/
+tsconfig.json
+vitest.config.ts
+
+# Development files
+.vscode/
+test/
+example-app
+example-app-2
+tools/
+
+# Test and debug files
+test-*.js
+*-test.js
+*-debug.js
+
+# CI/CD
+.github/
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Coverage
+coverage/
