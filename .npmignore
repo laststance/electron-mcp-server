@@ -7,7 +7,7 @@ vitest.config.ts
 .vscode/
 test/
 example-app
-example-app-2
+examples
 tools/
 
 # Test and debug files
