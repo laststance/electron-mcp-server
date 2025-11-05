@@ -1,7 +1,7 @@
 # Electron MCP Server
 
-[![GitHub license](https://img.shields.io/github/license/halilural/electron-mcp-server)](https://github.com/halilural/electron-mcp-server/blob/master/LICENSE)
-[![npm version](https://img.shields.io/npm/v/electron-mcp-server)](https://www.npmjs.com/package/electron-mcp-server)
+[![GitHub license](https://img.shields.io/github/license/laststance/electron-mcp-server)](https://github.com/laststance/electron-mcp-server/blob/master/LICENSE)
+[![npm version](https://img.shields.io/npm/v/@laststance/electron-mcp-server)](https://www.npmjs.com/package/@laststance/electron-mcp-server)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-blue)](https://modelcontextprotocol.io)
 
 A powerful Model Context Protocol (MCP) server that provides comprehensive Electron application automation, debugging, and observability capabilities. Supercharge your Electron development workflow with AI-powered automation through Chrome DevTools Protocol integration.
@@ -671,7 +671,7 @@ npm run dev -- --remote-debugging-port=9222
 ### Setup
 
 ```bash
-git clone https://github.com/halilural/electron-mcp-server.git
+git clone https://github.com/laststance/electron-mcp-server.git
 cd electron-mcp-server
 
 npm install
@@ -742,6 +742,32 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
+## 🙌 Credits & Attribution
+
+**Original Author**: [Halil Ural](https://github.com/halilural)
+
+This project is a fork of [halilural/electron-mcp-server](https://github.com/halilural/electron-mcp-server) with enhancements for **Cursor IDE compatibility** and improved stability.
+
+### Forked & Maintained By
+
+- [@laststance](https://github.com/laststance) - Cursor IDE integration improvements, bug fixes, and ongoing maintenance
+
+### Key Improvements in This Fork
+
+- ✅ **Cursor IDE Compatibility**: Full integration with Cursor IDE for seamless AI-powered Electron automation
+- ✅ **Enhanced Stability**: Improved error handling and reliability
+- ✅ **Better Documentation**: Added comprehensive guides for local development and troubleshooting
+- ✅ **Scoped Package**: Published as `@laststance/electron-mcp-server` on npm
+
+### Contributing to This Fork
+
+We welcome contributions! If you have improvements or bug fixes, please feel free to:
+1. Fork this repository
+2. Create a feature branch
+3. Submit a pull request with your improvements
+
+---
+
 ## ☕ Support
 
 If this project helped you, consider buying me a coffee! ☕
@@ -759,8 +785,9 @@ Your support helps me maintain and improve this project. Thank you! 🙏
 
 ## 🔗 Links
 
-- **[GitHub Repository](https://github.com/halilural/electron-mcp-server)**
-- **[NPM Package](https://www.npmjs.com/package/electron-mcp-server)**
+- **[GitHub Repository](https://github.com/laststance/electron-mcp-server)**
+- **[NPM Package](https://www.npmjs.com/package/@laststance/electron-mcp-server)**
+- **[Original Repository](https://github.com/halilural/electron-mcp-server)** - Original project by Halil Ural
 - **[Model Context Protocol](https://modelcontextprotocol.io)**
 - **[Chrome DevTools Protocol Docs](https://chromedevtools.github.io/devtools-protocol/)**
 - **[Cursor IDE Setup Guide](./CURSOR_SETUP.md)** - Complete setup guide for Cursor IDE integration
