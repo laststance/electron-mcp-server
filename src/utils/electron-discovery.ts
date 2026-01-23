@@ -16,6 +16,15 @@ export interface WindowInfo {
   webSocketDebuggerUrl: string;
 }
 
+/** Simplified window target info for the list_electron_windows tool */
+export interface ElectronWindowTarget {
+  id: string;
+  title: string;
+  url: string;
+  port: number;
+  type: string;
+}
+
 export interface ElectronWindowResult {
   platform: string;
   devToolsPort?: number;
@@ -126,6 +135,36 @@ export function findMainTarget(targets: any[]): any | null {
     targets.find((target: any) => target.type === 'page' && !target.title.includes('DevTools')) ||
     targets.find((target: any) => target.type === 'page')
   );
+}
+
+/**
+ * List all available Electron window targets across all detected apps.
+ * @param includeDevTools - Whether to include DevTools windows (default: false)
+ * @returns Array of window targets with id, title, url, port, and type
+ */
+export async function listElectronWindows(
+  includeDevTools: boolean = false,
+): Promise<ElectronWindowTarget[]> {
+  const foundApps = await scanForElectronApps();
+  const windows: ElectronWindowTarget[] = [];
+
+  for (const app of foundApps) {
+    for (const target of app.targets) {
+      // Filter out DevTools windows unless explicitly requested
+      if (!includeDevTools && target.url && target.url.startsWith('devtools://')) {
+        continue;
+      }
+      windows.push({
+        id: target.id,
+        title: target.title || '',
+        url: target.url || '',
+        port: app.port,
+        type: target.type || 'page',
+      });
+    }
+  }
+
+  return windows;
 }
 
 /**

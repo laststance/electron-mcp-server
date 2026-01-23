@@ -36,6 +36,16 @@ export const SendCommandToElectronSchema = z.object({
   args: CommandArgsSchema.optional().describe(
     'Arguments for the command - must be an object with appropriate properties based on the command type',
   ),
+  targetId: z
+    .string()
+    .optional()
+    .describe('CDP target ID to send the command to a specific window (exact match)'),
+  windowTitle: z
+    .string()
+    .optional()
+    .describe(
+      'Window title to target (case-insensitive partial match). Use list_electron_windows to see available windows.',
+    ),
 });
 
 export const TakeScreenshotSchema = z.object({
@@ -57,6 +67,13 @@ export const ReadElectronLogsSchema = z.object({
 
 export const GetElectronWindowInfoSchema = z.object({
   includeChildren: z.boolean().optional().describe('Include child windows information'),
+});
+
+export const ListElectronWindowsSchema = z.object({
+  includeDevTools: z
+    .boolean()
+    .optional()
+    .describe('Include DevTools windows in the list (default: false)'),
 });
 
 // Type helper for tool input schema

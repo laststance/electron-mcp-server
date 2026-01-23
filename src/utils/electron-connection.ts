@@ -17,10 +17,24 @@ export interface CommandResult {
   message: string;
 }
 
+/** Options for targeting a specific Electron window */
+export interface WindowTargetOptions {
+  /** CDP target ID (exact match) */
+  targetId?: string;
+  /** Window title (case-insensitive partial match) */
+  windowTitle?: string;
+}
+
 /**
- * Find and connect to a running Electron application
+ * Find and connect to a running Electron application.
+ * @param options - Optional targeting options to select a specific window
+ * @returns The DevTools target matching the given options
+ * @example
+ * findElectronTarget() // first available main window
+ * findElectronTarget({ targetId: 'ABC123' }) // exact ID match
+ * findElectronTarget({ windowTitle: 'Settings' }) // partial title match
  */
-export async function findElectronTarget(): Promise<DevToolsTarget> {
+export async function findElectronTarget(options?: WindowTargetOptions): Promise<DevToolsTarget> {
   logger.debug('Looking for running Electron applications...');
 
   const foundApps = await scanForElectronApps();
@@ -31,6 +45,50 @@ export async function findElectronTarget(): Promise<DevToolsTarget> {
     );
   }
 
+  // If targetId is specified, search all apps for exact ID match
+  if (options?.targetId) {
+    for (const app of foundApps) {
+      const match = app.targets.find((t: any) => t.id === options.targetId);
+      if (match) {
+        logger.debug(`Found target by ID "${options.targetId}" on port ${app.port}`);
+        return {
+          id: match.id,
+          title: match.title,
+          url: match.url,
+          webSocketDebuggerUrl: match.webSocketDebuggerUrl,
+          type: match.type,
+        };
+      }
+    }
+    throw new Error(
+      `No window found with targetId "${options.targetId}". Use list_electron_windows to see available targets.`,
+    );
+  }
+
+  // If windowTitle is specified, search all apps for case-insensitive partial match
+  if (options?.windowTitle) {
+    const searchTitle = options.windowTitle.toLowerCase();
+    for (const app of foundApps) {
+      const match = app.targets.find(
+        (t: any) => t.title && t.title.toLowerCase().includes(searchTitle),
+      );
+      if (match) {
+        logger.debug(`Found target by title "${options.windowTitle}" on port ${app.port}`);
+        return {
+          id: match.id,
+          title: match.title,
+          url: match.url,
+          webSocketDebuggerUrl: match.webSocketDebuggerUrl,
+          type: match.type,
+        };
+      }
+    }
+    throw new Error(
+      `No window found with title matching "${options.windowTitle}". Use list_electron_windows to see available targets.`,
+    );
+  }
+
+  // Default: use first app's main target (backward compatible)
   const app = foundApps[0];
   const mainTarget = findMainTarget(app.targets);
 

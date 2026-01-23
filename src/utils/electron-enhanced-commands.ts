@@ -1,4 +1,4 @@
-import { executeInElectron, findElectronTarget } from './electron-connection';
+import { executeInElectron, findElectronTarget, WindowTargetOptions } from './electron-connection';
 import { generateFindElementsCommand, generateClickByTextCommand } from './electron-commands';
 import {
   generateFillInputCommand,
@@ -16,11 +16,18 @@ export interface CommandArgs {
 }
 
 /**
- * Enhanced command executor with improved React support
+ * Enhanced command executor with improved React support.
+ * @param command - The command to execute
+ * @param args - Command-specific arguments
+ * @param windowOptions - Optional window targeting (targetId or windowTitle)
  */
-export async function sendCommandToElectron(command: string, args?: CommandArgs): Promise<string> {
+export async function sendCommandToElectron(
+  command: string,
+  args?: CommandArgs,
+  windowOptions?: WindowTargetOptions,
+): Promise<string> {
   try {
-    const target = await findElectronTarget();
+    const target = await findElectronTarget(windowOptions);
     let javascriptCode: string;
 
     switch (command.toLowerCase()) {

@@ -4,6 +4,7 @@ import {
   TakeScreenshotSchema,
   ReadElectronLogsSchema,
   GetElectronWindowInfoSchema,
+  ListElectronWindowsSchema,
   ToolInput,
 } from './schemas';
 
@@ -13,6 +14,7 @@ export enum ToolName {
   TAKE_SCREENSHOT = 'take_screenshot',
   READ_ELECTRON_LOGS = 'read_electron_logs',
   GET_ELECTRON_WINDOW_INFO = 'get_electron_window_info',
+  LIST_ELECTRON_WINDOWS = 'list_electron_windows',
 }
 
 // Define tools available to the MCP server
@@ -57,8 +59,20 @@ Examples:
 - send_keyboard_shortcut: {"text": "Enter"}
 - eval: {"code": "document.title"}
 
-Use 'get_page_structure' or 'debug_elements' first to understand available elements, then use specific interaction commands.`,
+Use 'get_page_structure' or 'debug_elements' first to understand available elements, then use specific interaction commands.
+
+Multi-window support:
+- targetId: Specify a CDP target ID to send commands to a specific window (exact match)
+- windowTitle: Specify a window title to target (case-insensitive partial match)
+- If neither is specified, commands are sent to the first available main window (backward compatible)
+- Use 'list_electron_windows' to see available windows and their IDs`,
     inputSchema: zodToJsonSchema(SendCommandToElectronSchema) as ToolInput,
+  },
+  {
+    name: ToolName.LIST_ELECTRON_WINDOWS,
+    description:
+      "List all available Electron window targets across all detected applications. Returns window IDs, titles, URLs, and ports. Use the returned IDs with send_command_to_electron's targetId parameter to target specific windows.",
+    inputSchema: zodToJsonSchema(ListElectronWindowsSchema) as ToolInput,
   },
   {
     name: ToolName.READ_ELECTRON_LOGS,

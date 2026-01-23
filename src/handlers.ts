@@ -6,9 +6,11 @@ import {
   TakeScreenshotSchema,
   ReadElectronLogsSchema,
   GetElectronWindowInfoSchema,
+  ListElectronWindowsSchema,
 } from './schemas';
 import { sendCommandToElectron } from './utils/electron-enhanced-commands';
-import { getElectronWindowInfo } from './utils/electron-discovery';
+import { getElectronWindowInfo, listElectronWindows } from './utils/electron-discovery';
+import { WindowTargetOptions } from './utils/electron-connection';
 import { readElectronLogs } from './utils/electron-logs';
 import { takeScreenshot } from './screenshot';
 import { logger } from './utils/logger';
@@ -109,7 +111,12 @@ export async function handleToolCall(request: z.infer<typeof CallToolRequestSche
       }
 
       case ToolName.SEND_COMMAND_TO_ELECTRON: {
-        const { command, args: commandArgs } = SendCommandToElectronSchema.parse(args);
+        const {
+          command,
+          args: commandArgs,
+          targetId,
+          windowTitle,
+        } = SendCommandToElectronSchema.parse(args);
 
         // Execute command through security manager
         const securityResult = await securityManager.executeSecurely({
@@ -144,8 +151,12 @@ export async function handleToolCall(request: z.infer<typeof CallToolRequestSche
           };
         }
 
+        // Build window target options if specified
+        const windowOptions: WindowTargetOptions | undefined =
+          targetId || windowTitle ? { targetId, windowTitle } : undefined;
+
         // Execute the actual command if security checks pass
-        const result = await sendCommandToElectron(command, commandArgs);
+        const result = await sendCommandToElectron(command, commandArgs, windowOptions);
         return {
           content: [{ type: 'text', text: result }],
           isError: false,
@@ -173,6 +184,60 @@ export async function handleToolCall(request: z.infer<typeof CallToolRequestSche
             {
               type: 'text',
               text: `Electron logs (${logType}):\n\n${logs}`,
+            },
+          ],
+          isError: false,
+        };
+      }
+
+      case ToolName.LIST_ELECTRON_WINDOWS: {
+        const { includeDevTools } = ListElectronWindowsSchema.parse(args);
+
+        const securityResult = await securityManager.executeSecurely({
+          command: 'list_windows',
+          args,
+          sourceIP,
+          userAgent,
+          operationType: 'window_info',
+        });
+
+        if (securityResult.blocked) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Operation blocked: ${securityResult.error}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const windows = await listElectronWindows(includeDevTools);
+
+        if (windows.length === 0) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'No Electron windows found. Ensure your app is running with --remote-debugging-port=9222',
+              },
+            ],
+            isError: false,
+          };
+        }
+
+        const formatted = windows
+          .map(
+            (w) => `- [${w.id}] "${w.title}" (port: ${w.port}, type: ${w.type})\n  URL: ${w.url}`,
+          )
+          .join('\n');
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Available Electron windows (${windows.length}):\n\n${formatted}`,
             },
           ],
           isError: false,
