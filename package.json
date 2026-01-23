@@ -7,6 +7,9 @@
     "electron-mcp-server": "dist/index.js"
   },
   "scripts": {
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "dev:inspect": "npm run build && npm run inspect",
+    "dev:hmr": "mcpmon -- npm run dev",
     "build": "webpack --config webpack.config.ts --mode production",
     "build:dev": "webpack --config webpack.config.ts --mode development",
     "dev": "tsx src/index.ts",
