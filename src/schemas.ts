@@ -1,52 +1,6 @@
 import { z } from 'zod';
 
-// Command arguments schema for better type safety and documentation
-export const CommandArgsSchema = z
-  .object({
-    selector: z
-      .string()
-      .optional()
-      .describe(
-        'CSS selector for targeting elements (required for click_by_selector, click_button)',
-      ),
-    text: z
-      .string()
-      .optional()
-      .describe(
-        'Text content for searching or keyboard input (required for click_by_text, send_keyboard_shortcut)',
-      ),
-    value: z
-      .string()
-      .optional()
-      .describe('Value to input into form fields (required for fill_input)'),
-    placeholder: z
-      .string()
-      .optional()
-      .describe(
-        'Placeholder text to identify input fields (alternative to selector for fill_input)',
-      ),
-    message: z.string().optional().describe('Message or content for specific commands'),
-    code: z.string().optional().describe('JavaScript code to execute (for eval command)'),
-  })
-  .describe('Command-specific arguments. Structure depends on the command being executed.');
-
 // Schema definitions for tool inputs
-export const SendCommandToElectronSchema = z.object({
-  command: z.string().describe('Command to send to the Electron process'),
-  args: CommandArgsSchema.optional().describe(
-    'Arguments for the command - must be an object with appropriate properties based on the command type',
-  ),
-  targetId: z
-    .string()
-    .optional()
-    .describe('CDP target ID to send the command to a specific window (exact match)'),
-  windowTitle: z
-    .string()
-    .optional()
-    .describe(
-      'Window title to target (case-insensitive partial match). Use list_electron_windows to see available windows.',
-    ),
-});
 
 export const TakeScreenshotSchema = z.object({
   outputPath: z

@@ -1,29 +1,44 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import {
-  SendCommandToElectronSchema,
   TakeScreenshotSchema,
   ReadElectronLogsSchema,
   GetElectronWindowInfoSchema,
   ListElectronWindowsSchema,
   ToolInput,
 } from './schemas';
+import { allCommands } from './commands';
 
-// Tool name enumeration
+/**
+ * Names of the static (non-`electron_*`) MCP tools.
+ *
+ * v2.0.0 removed `SEND_COMMAND_TO_ELECTRON` and replaced it with one tool per
+ * UI command (registered dynamically from `allCommands`). Static tools handle
+ * cross-cutting concerns that aren't tied to a single CDP target.
+ */
 export enum ToolName {
-  SEND_COMMAND_TO_ELECTRON = 'send_command_to_electron',
   TAKE_SCREENSHOT = 'take_screenshot',
   READ_ELECTRON_LOGS = 'read_electron_logs',
   GET_ELECTRON_WINDOW_INFO = 'get_electron_window_info',
   LIST_ELECTRON_WINDOWS = 'list_electron_windows',
 }
 
-// Define tools available to the MCP server
-export const tools = [
+/**
+ * Static MCP tools (cross-cutting; not part of the per-command registry).
+ * Keep these listed before the dynamic tools so MCP `tools/list` returns
+ * window-discovery and screenshot first — that's what callers use to bootstrap.
+ */
+const staticTools = [
   {
     name: ToolName.GET_ELECTRON_WINDOW_INFO,
     description:
       'Get information about running Electron applications and their windows. Automatically detects any Electron app with remote debugging enabled (port 9222).',
     inputSchema: zodToJsonSchema(GetElectronWindowInfoSchema) as ToolInput,
+  },
+  {
+    name: ToolName.LIST_ELECTRON_WINDOWS,
+    description:
+      "List all available Electron window targets across all detected applications. Returns window IDs, titles, URLs, and ports. Use the returned IDs with any electron_* tool's targetId parameter to target specific windows.",
+    inputSchema: zodToJsonSchema(ListElectronWindowsSchema) as ToolInput,
   },
   {
     name: ToolName.TAKE_SCREENSHOT,
@@ -32,56 +47,22 @@ export const tools = [
     inputSchema: zodToJsonSchema(TakeScreenshotSchema) as ToolInput,
   },
   {
-    name: ToolName.SEND_COMMAND_TO_ELECTRON,
-    description: `Send JavaScript commands to any running Electron application via Chrome DevTools Protocol. 
-
-Enhanced UI interaction commands:
-- 'find_elements': Analyze all interactive elements (buttons, inputs, selects) with their properties
-- 'click_by_text': Click elements by their visible text, aria-label, or title
-- 'click_by_selector': Securely click elements by CSS selector
-- 'fill_input': Fill input fields by selector, placeholder text, or associated label
-- 'select_option': Select dropdown options by value or text
-- 'send_keyboard_shortcut': Send keyboard shortcuts like 'Ctrl+N', 'Meta+N', 'Enter', 'Escape'
-- 'hover_by_selector': Hover over element by CSS selector using CDP-level mouse events (triggers tooltips, popovers)
-- 'hover_by_text': Hover over element by visible text using CDP-level mouse events (triggers tooltips, popovers)
-- 'navigate_to_hash': Safely navigate to hash routes (e.g., '#create', '#settings')
-- 'get_page_structure': Get organized overview of page elements (buttons, inputs, selects, links)
-- 'debug_elements': Get debugging info about buttons and form elements on the page
-- 'verify_form_state': Check current form state and validation status
-- 'get_title', 'get_url', 'get_body_text': Basic page information
-- 'eval': Execute custom JavaScript code with enhanced error reporting
-
-IMPORTANT: Arguments must be passed as an object with the correct properties:
-
-Examples:
-- click_by_selector: {"selector": "button.submit-btn"}
-- click_by_text: {"text": "Submit"}
-- fill_input: {"placeholder": "Enter name", "value": "John Doe"}
-- fill_input: {"selector": "#email", "value": "user@example.com"}
-- send_keyboard_shortcut: {"text": "Enter"}
-- hover_by_selector: {"selector": ".my-element"}
-- hover_by_text: {"text": "Claude Code"}
-- eval: {"code": "document.title"}
-
-Use 'get_page_structure' or 'debug_elements' first to understand available elements, then use specific interaction commands.
-
-Multi-window support:
-- targetId: Specify a CDP target ID to send commands to a specific window (exact match)
-- windowTitle: Specify a window title to target (case-insensitive partial match)
-- If neither is specified, commands are sent to the first available main window (backward compatible)
-- Use 'list_electron_windows' to see available windows and their IDs`,
-    inputSchema: zodToJsonSchema(SendCommandToElectronSchema) as ToolInput,
-  },
-  {
-    name: ToolName.LIST_ELECTRON_WINDOWS,
-    description:
-      "List all available Electron window targets across all detected applications. Returns window IDs, titles, URLs, and ports. Use the returned IDs with send_command_to_electron's targetId parameter to target specific windows.",
-    inputSchema: zodToJsonSchema(ListElectronWindowsSchema) as ToolInput,
-  },
-  {
     name: ToolName.READ_ELECTRON_LOGS,
     description:
       'Read console logs and output from running Electron applications. Useful for debugging and monitoring app behavior.',
     inputSchema: zodToJsonSchema(ReadElectronLogsSchema) as ToolInput,
   },
 ];
+
+/**
+ * Tools registered dynamically from the command registry. One MCP tool per
+ * `electron_*` command — see `src/commands/index.ts` for the source list.
+ */
+const dynamicTools = allCommands.map((cmd) => ({
+  name: cmd.name,
+  description: cmd.description,
+  inputSchema: zodToJsonSchema(cmd.schema) as ToolInput,
+}));
+
+/** Full tool list shipped to MCP clients via `tools/list`. */
+export const tools = [...staticTools, ...dynamicTools];

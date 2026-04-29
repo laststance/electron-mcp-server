@@ -1,0 +1,102 @@
+import { z } from 'zod';
+import { executeInElectron } from '../../utils/electron-connection';
+import { windowTargetFields } from '../shared/window-target';
+import { defineCommand } from '../types';
+
+const DEFAULT_TIMEOUT_MS = 5000;
+const HARD_TIMEOUT_BUFFER_MS = 2000;
+const POLL_INTERVAL_MS = 100;
+
+const schema = z.object({
+  ...windowTargetFields,
+  code: z
+    .string()
+    .min(1)
+    .describe(
+      'JavaScript expression to poll. Should return a truthy value when the wait condition is met.',
+    ),
+  timeoutMs: z
+    .number()
+    .int()
+    .positive()
+    .max(60000)
+    .default(DEFAULT_TIMEOUT_MS)
+    .describe('Maximum wait in milliseconds (default 5000, capped at 60000).'),
+});
+
+/**
+ * Repeatedly evaluate a user-provided JavaScript expression until it returns
+ * a truthy value (or the timeout fires).
+ *
+ * Why `operationType: 'eval'`:
+ * - The expression IS user-controlled JS — the same risk surface as
+ *   `electron_eval`. Routing through the eval security pipeline ensures
+ *   `validateEvalContent` runs against the actual code.
+ * - The handler dispatch reads `parsed.code` for eval commands; we use the
+ *   field name `code` here to match.
+ *
+ * Resolution strings:
+ * - `Condition met: <stringified result> (waited <ms>ms)`
+ * - `Timeout: condition did not become truthy within <ms>ms`
+ * - `Error in expression: <message>` if evaluation throws
+ *
+ * Polls every 100ms via `setInterval`; the wrapped expression runs inside a
+ * `try/catch` so transient errors (e.g. a property not yet defined) don't
+ * abort the wait.
+ */
+export const waitForFunction = defineCommand({
+  name: 'electron_wait_for_function',
+  description:
+    'Poll a JS expression until it returns truthy. operationType=eval (validated). Default 5000ms, polled every 100ms.',
+  schema,
+  operationType: 'eval',
+  async execute(args, target) {
+    const timeoutMs = args.timeoutMs;
+    const expressionLiteral = JSON.stringify(args.code);
+
+    const javascriptCode = `
+      (function() {
+        return new Promise((resolve) => {
+          const start = Date.now();
+          const expression = ${expressionLiteral};
+          const timeoutMs = ${timeoutMs};
+          const evaluator = new Function('return (' + expression + ')');
+
+          let resolved = false;
+          const finish = (msg) => {
+            if (resolved) return;
+            resolved = true;
+            clearInterval(poller);
+            clearTimeout(timer);
+            resolve(msg);
+          };
+
+          const tryOnce = () => {
+            try {
+              const value = evaluator();
+              if (value) {
+                let printed;
+                try { printed = JSON.stringify(value); } catch (e) { printed = String(value); }
+                finish('Condition met: ' + printed + ' (waited ' + (Date.now() - start) + 'ms)');
+              }
+            } catch (e) {
+              // Swallow transient errors so polling continues.
+            }
+          };
+
+          tryOnce();
+          const poller = setInterval(tryOnce, ${POLL_INTERVAL_MS});
+
+          const timer = setTimeout(() => {
+            finish('Timeout: condition did not become truthy within ' + timeoutMs + 'ms');
+          }, timeoutMs);
+        });
+      })()
+    `;
+
+    return executeInElectron(javascriptCode, target, {
+      awaitPromise: true,
+      timeoutMs: timeoutMs + HARD_TIMEOUT_BUFFER_MS,
+    });
+  },
+});

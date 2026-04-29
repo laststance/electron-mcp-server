@@ -6,6 +6,8 @@
 
 A powerful Model Context Protocol (MCP) server that provides comprehensive Electron application automation, debugging, and observability capabilities. Supercharge your Electron development workflow with AI-powered automation through Chrome DevTools Protocol integration.
 
+> **⚠️ Breaking change in v2.0** — the single `send_command_to_electron` tool has been split into ~40 individual `electron_*` tools (e.g. `electron_click_by_selector`, `electron_fill_input`). This dramatically improves LLM tool selection accuracy. **Read [MIGRATION.md](./MIGRATION.md) for the full v1 → v2 mapping.** v1.x stays available via `npm install @laststance/electron-mcp-server@^1.7`.
+
 ## Demo
 
 See the Electron MCP Server in action:

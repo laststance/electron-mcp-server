@@ -134,12 +134,32 @@ export async function sendCDPMethod(
   return CdpConnectionPool.getInstance().send(targetInfo, method, params);
 }
 
+/** Options forwarded to `CdpConnectionPool.evaluate` from command handlers. */
+export interface ExecuteInElectronOptions {
+  /**
+   * When the IIFE returns a Promise, set this to `true` so CDP waits for the
+   * Promise to resolve before responding. Required by all wait/sync commands.
+   */
+  awaitPromise?: boolean;
+  /**
+   * Hard CDP-level timeout in milliseconds. Use as a safety net above any
+   * in-IIFE `setTimeout` fallback (recommended: userTimeout + ~1000ms).
+   */
+  timeoutMs?: number;
+}
+
 /**
- * Execute JavaScript code in an Electron application via Chrome DevTools Protocol
+ * Execute JavaScript code in an Electron application via Chrome DevTools Protocol.
+ * @param javascriptCode - Expression to run in the Electron renderer
+ * @param target - Optional DevTools target; defaults to the first discovered window
+ * @param options - Pass `awaitPromise: true` for IIFEs that return a Promise
+ *   (used by wait/sync commands). `timeoutMs` enforces a hard CDP-level cap.
+ * @returns Human-readable string formatted by `formatEvaluateResult`
  */
 export async function executeInElectron(
   javascriptCode: string,
   target?: DevToolsTarget,
+  options?: ExecuteInElectronOptions,
 ): Promise<string> {
   const targetInfo = target || (await findElectronTarget());
 
@@ -150,7 +170,10 @@ export async function executeInElectron(
   logger.debug(`Executing JavaScript code on ${targetInfo.title}...`);
   let payload: RuntimeEvaluateResultPayload;
   try {
-    payload = await CdpConnectionPool.getInstance().evaluate(targetInfo, javascriptCode);
+    payload = await CdpConnectionPool.getInstance().evaluate(targetInfo, javascriptCode, {
+      awaitPromise: options?.awaitPromise,
+      timeoutMs: options?.timeoutMs,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error(`DevTools Protocol error:`, error);
