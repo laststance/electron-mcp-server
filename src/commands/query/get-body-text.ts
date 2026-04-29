@@ -14,6 +14,6 @@ export const getBodyText = defineCommand({
   schema,
   operationType: 'query',
   async execute(_args, target) {
-    return executeInElectron('document.body.innerText.substring(0, 500)', target);
+    return executeInElectron('(document.body?.innerText ?? "").substring(0, 500)', target);
   },
 });

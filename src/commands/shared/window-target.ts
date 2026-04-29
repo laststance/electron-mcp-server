@@ -32,6 +32,12 @@ export type WindowTargetArgs = z.infer<typeof WindowTargetSchema>;
 /**
  * Pull the targeting subset out of any args object so the handler can resolve
  * the CDP target before calling the command's `execute`.
+ *
+ * Precedence: `targetId` wins. If a non-empty `targetId` is supplied we never
+ * forward `windowTitle` — passing both contradicts the documented behavior
+ * (and `findElectronTarget` would silently use only one). Empty strings are
+ * treated as absent.
+ *
  * @example
  * const target = await findElectronTarget(extractWindowTarget(args));
  */
@@ -39,8 +45,13 @@ export function extractWindowTarget(args: {
   targetId?: string;
   windowTitle?: string;
 }): WindowTargetOptions | undefined {
-  if (args.targetId || args.windowTitle) {
-    return { targetId: args.targetId, windowTitle: args.windowTitle };
+  const targetId = args.targetId?.trim();
+  if (targetId) {
+    return { targetId };
+  }
+  const windowTitle = args.windowTitle?.trim();
+  if (windowTitle) {
+    return { windowTitle };
   }
   return undefined;
 }

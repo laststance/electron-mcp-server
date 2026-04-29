@@ -58,24 +58,27 @@ export const doubleClickBySelector = defineCommand({
       pointerType: 'mouse',
     };
 
+    // CDP requires `buttons` to be a bitmask of currently-pressed buttons —
+    // 1 while the left button is down, 0 once it's released. Some renderers
+    // (e.g. WebKit-derived widgets) ignore mouse events that omit it.
     await sendCDPMethod(
       'Input.dispatchMouseEvent',
-      { ...baseEvent, type: 'mousePressed', clickCount: 1 },
+      { ...baseEvent, type: 'mousePressed', clickCount: 1, buttons: 1 },
       target,
     );
     await sendCDPMethod(
       'Input.dispatchMouseEvent',
-      { ...baseEvent, type: 'mouseReleased', clickCount: 1 },
+      { ...baseEvent, type: 'mouseReleased', clickCount: 1, buttons: 0 },
       target,
     );
     await sendCDPMethod(
       'Input.dispatchMouseEvent',
-      { ...baseEvent, type: 'mousePressed', clickCount: 2 },
+      { ...baseEvent, type: 'mousePressed', clickCount: 2, buttons: 1 },
       target,
     );
     await sendCDPMethod(
       'Input.dispatchMouseEvent',
-      { ...baseEvent, type: 'mouseReleased', clickCount: 2 },
+      { ...baseEvent, type: 'mouseReleased', clickCount: 2, buttons: 0 },
       target,
     );
 

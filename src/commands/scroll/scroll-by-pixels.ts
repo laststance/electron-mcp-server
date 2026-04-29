@@ -26,10 +26,26 @@ export const scrollByPixels = defineCommand({
   schema,
   operationType: 'command',
   async execute(args, target) {
+    // For smooth behavior, scrolling is animated and finishes asynchronously.
+    // Reading window.scrollX/Y synchronously after scrollBy returns the
+    // *starting* position, not the final one. Wait for `scrollend`, falling
+    // back to a 500ms timeout for browsers/contexts that don't fire it.
+    const isSmooth = args.behavior === 'smooth';
     const javascriptCode = `
-      (function() {
+      (async function() {
         try {
+          const isSmooth = ${JSON.stringify(isSmooth)};
           window.scrollBy({ left: ${args.deltaX}, top: ${args.deltaY}, behavior: ${JSON.stringify(args.behavior)} });
+          if (isSmooth) {
+            await new Promise(function(resolve) {
+              const onEnd = function() {
+                window.removeEventListener('scrollend', onEnd);
+                resolve();
+              };
+              window.addEventListener('scrollend', onEnd, { once: true });
+              setTimeout(onEnd, 500);
+            });
+          }
           return 'Scrolled by (' + ${args.deltaX} + ', ' + ${args.deltaY} + '), now at (' + window.scrollX + ', ' + window.scrollY + ')';
         } catch (e) {
           return 'Error scrolling: ' + e.message;
@@ -37,6 +53,6 @@ export const scrollByPixels = defineCommand({
       })();
     `;
 
-    return executeInElectron(javascriptCode, target);
+    return executeInElectron(javascriptCode, target, { awaitPromise: true });
   },
 });

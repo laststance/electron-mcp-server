@@ -24,21 +24,29 @@ export const hoverByText = defineCommand({
   schema,
   operationType: 'command',
   async execute(args, target) {
+    // Walk elements and check the aggregated textContent so split markup like
+    // <span>Sign</span><span>in</span> still matches "Sign in". Picking the
+    // element with the shortest textContent acts as a most-specific match
+    // — outermost ancestors (body, main) almost always contain the search
+    // string but are not the click target the user wants.
     const findExpr = `(function() {
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
       const search = ${escapeJsString(args.text)}.toLowerCase();
+      let best = null;
+      let bestLength = Infinity;
       while (walker.nextNode()) {
-        if (walker.currentNode.textContent.trim().toLowerCase().includes(search)) {
-          const el = walker.currentNode.parentElement;
-          if (el) {
-            const rect = el.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-              return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
-            }
-          }
+        const el = walker.currentNode;
+        const text = (el.textContent || '').trim().toLowerCase();
+        if (!text.includes(search)) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) continue;
+        if (text.length < bestLength) {
+          best = rect;
+          bestLength = text.length;
         }
       }
-      return null;
+      if (!best) return null;
+      return { x: best.x + best.width / 2, y: best.y + best.height / 2 };
     })()`;
 
     const coordResult = await executeInElectron(findExpr, target);

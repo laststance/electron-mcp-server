@@ -24,7 +24,9 @@ const debugElementsScript = `
       placeholder: inp.placeholder,
       type: inp.type,
       id: inp.id,
-      value: inp.value,
+      // Never echo the contents of password fields — debug output is shown to the
+      // caller and may end up in audit logs.
+      value: inp.type === 'password' ? '[REDACTED]' : inp.value,
       visible: inp.getBoundingClientRect().width > 0,
       enabled: !inp.disabled
     }));

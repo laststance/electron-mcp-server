@@ -22,6 +22,12 @@ const VALID_SPECIAL_KEYS = [
   'ArrowDown',
   'ArrowLeft',
   'ArrowRight',
+  'Backspace',
+  'Delete',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
 ] as const;
 
 const SPECIAL_KEY_CODES: Readonly<Record<string, string>> = {
@@ -106,18 +112,26 @@ export const sendKeyboardShortcut = defineCommand({
       .filter((p): p is string => p !== null)
       .join(', ');
 
+    // Serialize user-controlled values via JSON.stringify so they cannot
+    // break out of the string literal. Even though we validate that keyPart
+    // is either a single character or a known special key, the entire
+    // shortcut string is otherwise echoed back into the return message.
+    const keyLiteral = JSON.stringify(keyPart);
+    const codeLiteral = JSON.stringify(keyToCode(keyPart));
+    const shortcutLiteral = JSON.stringify(args.shortcut);
+
     const javascriptCode = `
       (function() {
         try {
           const event = new KeyboardEvent('keydown', {
-            key: '${keyPart}',
-            code: '${keyToCode(keyPart)}',
+            key: ${keyLiteral},
+            code: ${codeLiteral},
             ${modifierProps ? modifierProps + ',' : ''}
             bubbles: true,
             cancelable: true
           });
           document.dispatchEvent(event);
-          return 'Keyboard shortcut sent: ${args.shortcut}';
+          return 'Keyboard shortcut sent: ' + ${shortcutLiteral};
         } catch (e) {
           return 'Error sending shortcut: ' + e.message;
         }

@@ -61,14 +61,17 @@ export const waitForLoadState = defineCommand({
           const NETWORK_IDLE_QUIET_MS = ${NETWORK_IDLE_QUIET_MS};
 
           let resolved = false;
+          // \`let\` so the networkidle branch can swap the timeout for one
+          // that also restores its monkey patches before resolving.
+          let timer;
           const finish = (msg) => {
             if (resolved) return;
             resolved = true;
-            clearTimeout(timer);
+            if (timer) clearTimeout(timer);
             resolve(msg);
           };
 
-          const timer = setTimeout(() => {
+          timer = setTimeout(() => {
             finish('Timeout: load state ' + state + ' not reached within ' + timeoutMs + 'ms');
           }, timeoutMs);
 
@@ -147,9 +150,10 @@ export const waitForLoadState = defineCommand({
           }
 
           // Wrap the original timeout so we restore patches even on timeout.
-          const originalTimer = timer;
-          clearTimeout(originalTimer);
-          setTimeout(() => {
+          // Reassign \`timer\` so a successful networkidle finish (via
+          // scheduleQuietCheck) clears THIS timeout, not the stale one.
+          clearTimeout(timer);
+          timer = setTimeout(() => {
             if (resolved) return;
             restorePatches();
             finish('Timeout: load state networkidle not reached within ' + timeoutMs + 'ms');

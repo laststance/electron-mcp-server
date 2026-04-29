@@ -40,14 +40,29 @@ export const scrollToElement = defineCommand({
     const behaviorLiteral = JSON.stringify(args.behavior);
     const blockLiteral = JSON.stringify(args.block);
 
+    // For smooth behavior, scrollIntoView returns immediately while the
+    // animation is still running. Wait for `scrollend` so callers can rely
+    // on the element being in view by the time we return; fall back to a
+    // 500ms timeout for browsers without scrollend support.
+    const isSmooth = args.behavior === 'smooth';
     const javascriptCode = `
-      (function() {
+      (async function() {
         try {
           const element = document.querySelector(${escapedSelector});
           if (!element) {
             return 'Element not found: ' + ${escapedSelector};
           }
           element.scrollIntoView({ behavior: ${behaviorLiteral}, block: ${blockLiteral} });
+          if (${JSON.stringify(isSmooth)}) {
+            await new Promise(function(resolve) {
+              const onEnd = function() {
+                document.removeEventListener('scrollend', onEnd, true);
+                resolve();
+              };
+              document.addEventListener('scrollend', onEnd, { once: true, capture: true });
+              setTimeout(onEnd, 500);
+            });
+          }
           return 'Scrolled to: ' + ${escapedSelector};
         } catch (e) {
           return 'Error scrolling: ' + e.message;
@@ -55,6 +70,6 @@ export const scrollToElement = defineCommand({
       })();
     `;
 
-    return executeInElectron(javascriptCode, target);
+    return executeInElectron(javascriptCode, target, { awaitPromise: true });
   },
 });

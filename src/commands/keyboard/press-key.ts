@@ -44,6 +44,8 @@ const SPECIAL_KEY_TO_CODE: Readonly<Record<string, string>> = {
  */
 function resolveKeyCode(key: string): string {
   if (SPECIAL_KEY_TO_CODE[key]) return SPECIAL_KEY_TO_CODE[key];
+  // A literal space character has KeyboardEvent.code 'Space', not ' '.
+  if (key === ' ') return 'Space';
   if (key.length === 1) {
     const upper = key.toUpperCase();
     if (upper >= 'A' && upper <= 'Z') return `Key${upper}`;

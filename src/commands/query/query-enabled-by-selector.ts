@@ -37,6 +37,10 @@ export const queryEnabledBySelector = defineCommand({
     }
     const escapedSelector = escapeJsString(args.selector);
 
+    // Use :disabled instead of element.disabled so we also detect controls
+    // disabled via an ancestor fieldset[disabled] — the property only reflects
+    // the direct attribute, while the pseudo-class follows the form control's
+    // effective state.
     const javascriptCode = `
       (function() {
         try {
@@ -47,7 +51,7 @@ export const queryEnabledBySelector = defineCommand({
           if (!('disabled' in element)) {
             return 'Element has no disabled property: ' + ${escapedSelector};
           }
-          return element.disabled ? 'false' : 'true';
+          return element.matches(':disabled') ? 'false' : 'true';
         } catch (e) {
           return 'Error querying enabled state: ' + e.message;
         }

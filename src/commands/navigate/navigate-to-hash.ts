@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { executeInElectron } from '../../utils/electron-connection';
+import { escapeJsString } from '../shared/escaping';
 import { windowTargetFields } from '../shared/window-target';
 import { defineCommand } from '../types';
 
@@ -33,23 +34,27 @@ export const navigateToHash = defineCommand({
       return 'Invalid hash: contains dangerous content';
     }
     const cleanHash = args.hash.startsWith('#') ? args.hash : '#' + args.hash;
+    // Always serialize the user-supplied hash through escapeJsString before
+    // interpolation so attacker-controlled input cannot break out of the
+    // string literal and execute arbitrary JS in the renderer.
+    const hashLiteral = escapeJsString(cleanHash);
 
     const javascriptCode = `
       (function() {
         try {
           if (window.history && window.history.pushState) {
-            const newUrl = window.location.pathname + window.location.search + '${cleanHash}';
+            const newUrl = window.location.pathname + window.location.search + ${hashLiteral};
             window.history.pushState({}, '', newUrl);
 
             window.dispatchEvent(new HashChangeEvent('hashchange', {
               newURL: window.location.href,
-              oldURL: window.location.href.replace('${cleanHash}', '')
+              oldURL: window.location.href.replace(${hashLiteral}, '')
             }));
 
-            return 'Navigated to hash: ${cleanHash}';
+            return 'Navigated to hash: ' + ${hashLiteral};
           } else {
-            window.location.hash = '${cleanHash}';
-            return 'Navigated to hash (fallback): ${cleanHash}';
+            window.location.hash = ${hashLiteral};
+            return 'Navigated to hash (fallback): ' + ${hashLiteral};
           }
         } catch (e) {
           return 'Error navigating: ' + e.message;

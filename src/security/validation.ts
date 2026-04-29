@@ -7,6 +7,9 @@ export const SecureCommandSchema = z.object({
   command: z.string().min(1).max(10000),
   args: z.any().optional(),
   sessionId: z.string().optional(),
+  operationType: z
+    .enum(['command', 'query', 'eval', 'screenshot', 'logs', 'window_info'])
+    .optional(),
 });
 
 export interface ValidationResult {
@@ -105,9 +108,12 @@ export class InputValidator {
 
       // Validate command content
       let commandValidation;
-      if (parsed.command === 'eval' && parsed.args) {
-        // Special validation for eval commands - validate the code being executed
-        commandValidation = this.validateEvalContent(String(parsed.args));
+      if (parsed.operationType === 'eval') {
+        // Special validation for eval — `parsed.command` is the JavaScript code
+        // (handlers.ts passes the user-supplied code in the command field when
+        // operationType is 'eval'). Avoid relying on the literal string 'eval'
+        // matching the command name.
+        commandValidation = this.validateEvalContent(parsed.command);
       } else {
         commandValidation = this.validateCommandContent(parsed.command);
       }

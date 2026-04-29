@@ -54,6 +54,12 @@ export const waitForFunction = defineCommand({
     const timeoutMs = args.timeoutMs;
     const expressionLiteral = JSON.stringify(args.code);
 
+    // \`poller\` and \`timer\` need to be declared BEFORE \`tryOnce\` runs the
+    // first time. If the expression is already truthy on the first call,
+    // \`finish\` clears the (still-uninitialized) const bindings and trips the
+    // TDZ — the error is swallowed inside the try/catch and the wait silently
+    // hangs until the hard CDP timeout. Use \`let\` and guard the cleanup so
+    // the synchronous-resolution path works.
     const javascriptCode = `
       (function() {
         return new Promise((resolve) => {
@@ -62,12 +68,14 @@ export const waitForFunction = defineCommand({
           const timeoutMs = ${timeoutMs};
           const evaluator = new Function('return (' + expression + ')');
 
+          let poller;
+          let timer;
           let resolved = false;
           const finish = (msg) => {
             if (resolved) return;
             resolved = true;
-            clearInterval(poller);
-            clearTimeout(timer);
+            if (poller) clearInterval(poller);
+            if (timer) clearTimeout(timer);
             resolve(msg);
           };
 
@@ -85,9 +93,9 @@ export const waitForFunction = defineCommand({
           };
 
           tryOnce();
-          const poller = setInterval(tryOnce, ${POLL_INTERVAL_MS});
-
-          const timer = setTimeout(() => {
+          if (resolved) return;
+          poller = setInterval(tryOnce, ${POLL_INTERVAL_MS});
+          timer = setTimeout(() => {
             finish('Timeout: condition did not become truthy within ' + timeoutMs + 'ms');
           }, timeoutMs);
         });

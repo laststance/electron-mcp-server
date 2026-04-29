@@ -110,6 +110,7 @@ export class SecurityManager {
       const validation = InputValidator.validateCommand({
         command: context.command,
         args: context.args,
+        operationType: context.operationType,
       });
 
       if (!validation.isValid) {

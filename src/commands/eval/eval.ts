@@ -96,7 +96,7 @@ export const evalCommand = defineCommand({
           if (result === null) {
             return { success: false, error: 'Command returned null - element may not exist', result: null };
           }
-          if (result === false && rawCode.includes('click') || rawCode.includes('querySelector')) {
+          if (result === false && (rawCode.includes('click') || rawCode.includes('querySelector'))) {
             return { success: false, error: 'Command returned false - action likely failed', result: false };
           }
 

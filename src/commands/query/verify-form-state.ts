@@ -25,7 +25,9 @@ const verifyFormStateScript = `
         action: form.action,
         method: form.method,
         inputs: inputs,
-        isValid: form.checkValidity?.() || 'unknown'
+        // Use a typeof check so a legitimate \`false\` result (form is invalid)
+        // doesn't get coerced into the 'unknown' sentinel by ||.
+        isValid: typeof form.checkValidity === 'function' ? form.checkValidity() : 'unknown'
       };
     });
 

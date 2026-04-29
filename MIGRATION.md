@@ -47,7 +47,11 @@ MCP layer instead of inside our handler.
 ## Migration table
 
 Translate every v1 `send_command_to_electron` call into the v2 tool that
-replaces it. Argument shape is identical — just hoisted out of the wrapper.
+replaces it. The arguments your sub-command used to take are now top-level
+fields on the v2 tool — drop the `command` / `args` wrapper and pass them
+directly. **Exception:** the wrapper-level window targeting fields (`targetId`
+/ `windowTitle`) move INTO each tool's arguments rather than disappearing.
+See [Multi-window targeting](#multi-window-targeting) below.
 
 | v1 subcommand                 | v2 tool                                  | Notes                                                                 |
 | ----------------------------- | ---------------------------------------- | --------------------------------------------------------------------- |
