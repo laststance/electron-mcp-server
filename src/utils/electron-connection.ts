@@ -1,4 +1,5 @@
 import WebSocket from 'ws';
+import { CdpConnectionPool, type RuntimeEvaluateResultPayload } from './cdp-pool';
 import { scanForElectronApps, findMainTarget } from './electron-discovery';
 import { logger } from './logger';
 
@@ -129,42 +130,8 @@ export async function sendCDPMethod(
     throw new Error('No WebSocket debugger URL available');
   }
 
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(targetInfo.webSocketDebuggerUrl);
-    const messageId = Math.floor(Math.random() * 1000000);
-
-    const timeout = setTimeout(() => {
-      ws.close();
-      reject(new Error(`CDP method timeout (10s): ${method}`));
-    }, 10000);
-
-    ws.on('open', () => {
-      logger.debug(`Sending CDP method: ${method}`);
-      ws.send(JSON.stringify({ id: messageId, method, params }));
-    });
-
-    ws.on('message', (data) => {
-      try {
-        const response = JSON.parse(data.toString());
-        if (response.id === messageId) {
-          clearTimeout(timeout);
-          ws.close();
-          if (response.error) {
-            reject(new Error(`CDP error (${method}): ${response.error.message}`));
-          } else {
-            resolve(response.result ?? null);
-          }
-        }
-      } catch (error) {
-        logger.warn(`Failed to parse CDP response:`, error);
-      }
-    });
-
-    ws.on('error', (error) => {
-      clearTimeout(timeout);
-      reject(new Error(`WebSocket error: ${error.message}`));
-    });
-  });
+  logger.debug(`Sending CDP method: ${method}`);
+  return CdpConnectionPool.getInstance().send(targetInfo, method, params);
 }
 
 /**
@@ -180,116 +147,56 @@ export async function executeInElectron(
     throw new Error('No WebSocket debugger URL available');
   }
 
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(targetInfo.webSocketDebuggerUrl);
-    const messageId = Math.floor(Math.random() * 1000000);
+  logger.debug(`Executing JavaScript code on ${targetInfo.title}...`);
+  let payload: RuntimeEvaluateResultPayload;
+  try {
+    payload = await CdpConnectionPool.getInstance().evaluate(targetInfo, javascriptCode);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`DevTools Protocol error:`, error);
+    throw new Error(`DevTools Protocol error: ${message}`);
+  }
 
-    const timeout = setTimeout(() => {
-      ws.close();
-      reject(new Error('Command execution timeout (10s)'));
-    }, 10000);
+  return formatEvaluateResult(payload);
+}
 
-    ws.on('open', () => {
-      logger.debug(`Connected to ${targetInfo.title} via WebSocket`);
+/**
+ * Translate the raw CDP `Runtime.evaluate` payload into the human-readable
+ * string format that existing MCP tool handlers depend on.
+ *
+ * Why this lives here (and not inside the pool):
+ * - The pool stays neutral about presentation. Phase 1 introduces structured
+ *   `CommandResult<T>` returns; once that lands, callers can drop this helper.
+ */
+function formatEvaluateResult(payload: RuntimeEvaluateResultPayload): string {
+  if (!payload?.result) {
+    return `✅ Command sent successfully`;
+  }
+  const result = payload.result;
+  logger.debug(`Execution result type: ${result.type}, value:`, result.value);
 
-      // Enable Runtime domain first
-      ws.send(
-        JSON.stringify({
-          id: 1,
-          method: 'Runtime.enable',
-        }),
-      );
-
-      // Send Runtime.evaluate command
-      const message = {
-        id: messageId,
-        method: 'Runtime.evaluate',
-        params: {
-          expression: javascriptCode,
-          returnByValue: true,
-          awaitPromise: false,
-        },
-      };
-
-      logger.debug(`Executing JavaScript code...`);
-      ws.send(JSON.stringify(message));
-    });
-
-    ws.on('message', (data) => {
+  switch (result.type) {
+    case 'string':
+      return `✅ Command executed: ${String(result.value)}`;
+    case 'number':
+    case 'boolean':
+      return `✅ Result: ${String(result.value)}`;
+    case 'undefined':
+      return `✅ Command executed successfully`;
+    case 'object': {
+      if (result.value === null) return `✅ Result: null`;
+      if (result.value === undefined) return `✅ Result: undefined`;
       try {
-        const response = JSON.parse(data.toString());
-
-        // Filter out noisy CDP events to reduce log spam
-        const FILTERED_CDP_METHODS = [
-          'Runtime.executionContextCreated',
-          'Runtime.consoleAPICalled',
-          'Console.messageAdded',
-          'Page.frameNavigated',
-          'Page.loadEventFired',
-        ];
-
-        // Only log CDP events if debug level is enabled and they're not filtered
-        if (
-          logger.isEnabled(3) &&
-          (!response.method || !FILTERED_CDP_METHODS.includes(response.method))
-        ) {
-          logger.debug(`CDP Response for message ${messageId}:`, JSON.stringify(response, null, 2));
-        }
-
-        if (response.id === messageId) {
-          clearTimeout(timeout);
-          ws.close();
-
-          if (response.error) {
-            logger.error(`DevTools Protocol error:`, response.error);
-            reject(new Error(`DevTools Protocol error: ${response.error.message}`));
-          } else if (response.result) {
-            const result = response.result.result;
-            logger.debug(`Execution result type: ${result?.type}, value:`, result?.value);
-
-            if (result.type === 'string') {
-              resolve(`✅ Command executed: ${result.value}`);
-            } else if (result.type === 'number') {
-              resolve(`✅ Result: ${result.value}`);
-            } else if (result.type === 'boolean') {
-              resolve(`✅ Result: ${result.value}`);
-            } else if (result.type === 'undefined') {
-              resolve(`✅ Command executed successfully`);
-            } else if (result.type === 'object') {
-              if (result.value === null) {
-                resolve(`✅ Result: null`);
-              } else if (result.value === undefined) {
-                resolve(`✅ Result: undefined`);
-              } else {
-                try {
-                  resolve(`✅ Result: ${JSON.stringify(result.value, null, 2)}`);
-                } catch {
-                  resolve(
-                    `✅ Result: [Object - could not serialize: ${
-                      result.className || result.objectId || 'unknown'
-                    }]`,
-                  );
-                }
-              }
-            } else {
-              resolve(`✅ Result type ${result.type}: ${result.description || 'no description'}`);
-            }
-          } else {
-            logger.debug(`No result in response:`, response);
-            resolve(`✅ Command sent successfully`);
-          }
-        }
-      } catch (error) {
-        // Only treat parsing errors as warnings, not errors
-        logger.warn(`Failed to parse CDP response:`, error);
+        return `✅ Result: ${JSON.stringify(result.value, null, 2)}`;
+      } catch {
+        return `✅ Result: [Object - could not serialize: ${
+          result.className || result.objectId || 'unknown'
+        }]`;
       }
-    });
-
-    ws.on('error', (error) => {
-      clearTimeout(timeout);
-      reject(new Error(`WebSocket error: ${error.message}`));
-    });
-  });
+    }
+    default:
+      return `✅ Result type ${result.type}: ${result.description || 'no description'}`;
+  }
 }
 
 /**
