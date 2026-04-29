@@ -9,6 +9,7 @@ test/
 example-app
 examples
 tools/
+playground/
 
 # Test and debug files
 test-*.js
