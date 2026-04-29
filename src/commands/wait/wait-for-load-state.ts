@@ -101,7 +101,10 @@ export const waitForLoadState = defineCommand({
           let activeCount = 0;
           let quietTimer = null;
 
-          const originalFetch = window.fetch ? window.fetch.bind(window) : null;
+          // Capture the raw function reference rather than a bound copy so
+          // restorePatches puts back the *exact* original (function identity
+          // matters — some libraries cache window.fetch by reference).
+          const originalFetch = window.fetch || null;
           const originalXhrOpen = window.XMLHttpRequest && window.XMLHttpRequest.prototype.open;
           const originalXhrSend = window.XMLHttpRequest && window.XMLHttpRequest.prototype.send;
 
@@ -136,16 +139,32 @@ export const waitForLoadState = defineCommand({
           if (originalFetch) {
             window.fetch = function() {
               inc();
-              const promise = originalFetch.apply(this, arguments);
-              promise.then(dec, dec);
-              return promise;
+              // Sync throws (e.g. invalid input) bypass the .then chain — guard
+              // them so dec() still runs and activeCount can return to zero.
+              // apply(window, ...) because some fetch impls require a window
+              // \`this\`; calling with the wrapper's \`this\` raises "Illegal invocation".
+              try {
+                const promise = originalFetch.apply(window, arguments);
+                return Promise.resolve(promise).finally(dec);
+              } catch (error) {
+                dec();
+                throw error;
+              }
             };
           }
           if (originalXhrOpen && originalXhrSend) {
             window.XMLHttpRequest.prototype.send = function() {
               inc();
               this.addEventListener('loadend', dec, { once: true });
-              return originalXhrSend.apply(this, arguments);
+              // Symmetric guard: send() can throw synchronously (e.g. on
+              // unopened XHR). Without this catch, inc() runs but dec() never
+              // does, and networkidle waits forever.
+              try {
+                return originalXhrSend.apply(this, arguments);
+              } catch (error) {
+                dec();
+                throw error;
+              }
             };
           }
 

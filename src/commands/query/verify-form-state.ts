@@ -11,14 +11,27 @@ const schema = WindowTargetSchema;
 const verifyFormStateScript = `
   (function() {
     const forms = Array.from(document.querySelectorAll('form')).map(form => {
-      const inputs = Array.from(form.querySelectorAll('input, textarea, select')).map(inp => ({
-        name: inp.name,
-        type: inp.type,
-        value: inp.value,
-        placeholder: inp.placeholder,
-        required: inp.required,
-        valid: inp.validity?.valid
-      }));
+      const inputs = Array.from(form.querySelectorAll('input, textarea, select')).map(inp => {
+        // Redact obvious secret fields. Type === 'password' catches HTML5
+        // password inputs; the name/autocomplete checks catch tokens and
+        // API-key inputs that legitimately use type="text".
+        const lowerName = (inp.name || '').toLowerCase();
+        const lowerType = (inp.type || '').toLowerCase();
+        const autocomplete = (inp.autocomplete || '').toLowerCase();
+        const isSensitive =
+          lowerType === 'password' ||
+          autocomplete === 'current-password' ||
+          autocomplete === 'new-password' ||
+          /password|token|secret|api[_-]?key/.test(lowerName);
+        return {
+          name: inp.name,
+          type: inp.type,
+          value: isSensitive ? '[REDACTED]' : inp.value,
+          placeholder: inp.placeholder,
+          required: inp.required,
+          valid: inp.validity?.valid
+        };
+      });
 
       return {
         id: form.id,

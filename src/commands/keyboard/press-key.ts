@@ -87,7 +87,16 @@ export const pressKey = defineCommand({
       0,
     );
 
-    const isPrintable = args.key.length === 1 && !SPECIAL_KEY_TO_CODE[args.key];
+    // Per CDP guidance: omit text/unmodifiedText (use rawKeyDown) when a
+    // non-shift modifier is held, otherwise the renderer inserts the
+    // character alongside the shortcut action. Shift on its own is fine —
+    // it just produces uppercase. See:
+    // https://chromedevtools.github.io/devtools-protocol/tot/Input/
+    const hasNonShiftModifier = (args.modifiers ?? []).some(
+      (modifier) => modifier === 'Ctrl' || modifier === 'Alt' || modifier === 'Meta',
+    );
+    const isPrintable =
+      args.key.length === 1 && !SPECIAL_KEY_TO_CODE[args.key] && !hasNonShiftModifier;
 
     await sendCDPMethod(
       'Input.dispatchKeyEvent',

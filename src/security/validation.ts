@@ -7,9 +7,10 @@ export const SecureCommandSchema = z.object({
   command: z.string().min(1).max(10000),
   args: z.any().optional(),
   sessionId: z.string().optional(),
-  operationType: z
-    .enum(['command', 'query', 'eval', 'screenshot', 'logs', 'window_info'])
-    .optional(),
+  // Required so eval routing fails closed: callers MUST declare the operation
+  // type explicitly. A missing field would otherwise route user-controlled JS
+  // through validateCommandContent and skip validateEvalContent entirely.
+  operationType: z.enum(['command', 'query', 'eval', 'screenshot', 'logs', 'window_info']),
 });
 
 export interface ValidationResult {

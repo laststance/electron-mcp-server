@@ -30,6 +30,9 @@ export const hoverByText = defineCommand({
     // — outermost ancestors (body, main) almost always contain the search
     // string but are not the click target the user wants.
     const findExpr = `(function() {
+      // Body may not be present yet on early-loaded pages; bail rather than
+      // throwing into the executeInElectron error path.
+      if (!document.body) return null;
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
       const search = ${escapeJsString(args.text)}.toLowerCase();
       let best = null;
@@ -50,13 +53,23 @@ export const hoverByText = defineCommand({
     })()`;
 
     const coordResult = await executeInElectron(findExpr, target);
-    const coordMatch = coordResult.match(/\{[\s\S]*?"x":\s*([\d.]+)[\s\S]*?"y":\s*([\d.]+)/);
-    if (!coordMatch) {
+    // Pull out the JSON object and parse it so negative coordinates (elements
+    // partially off-screen) and decimal values both round-trip cleanly.
+    const coordJson = coordResult.match(/\{[\s\S]*\}/);
+    if (!coordJson) {
       return `Element not found: ${args.text}`;
     }
-
-    const hoverX = Math.round(parseFloat(coordMatch[1]));
-    const hoverY = Math.round(parseFloat(coordMatch[2]));
+    let coords: { x?: unknown; y?: unknown };
+    try {
+      coords = JSON.parse(coordJson[0]);
+    } catch {
+      return `Element not found: ${args.text}`;
+    }
+    if (typeof coords.x !== 'number' || typeof coords.y !== 'number') {
+      return `Element not found: ${args.text}`;
+    }
+    const hoverX = Math.round(coords.x);
+    const hoverY = Math.round(coords.y);
 
     await sendCDPMethod(
       'Input.dispatchMouseEvent',

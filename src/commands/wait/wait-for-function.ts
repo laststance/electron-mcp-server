@@ -71,6 +71,9 @@ export const waitForFunction = defineCommand({
           let poller;
           let timer;
           let resolved = false;
+          // Capture the most recent evaluator error so a permanently-invalid
+          // expression surfaces a real reason instead of a confusing timeout.
+          let lastError = null;
           const finish = (msg) => {
             if (resolved) return;
             resolved = true;
@@ -88,7 +91,9 @@ export const waitForFunction = defineCommand({
                 finish('Condition met: ' + printed + ' (waited ' + (Date.now() - start) + 'ms)');
               }
             } catch (e) {
-              // Swallow transient errors so polling continues.
+              // Swallow transient errors so polling continues — but remember
+              // the last one to report on timeout.
+              lastError = e && e.message ? e.message : String(e);
             }
           };
 
@@ -96,6 +101,10 @@ export const waitForFunction = defineCommand({
           if (resolved) return;
           poller = setInterval(tryOnce, ${POLL_INTERVAL_MS});
           timer = setTimeout(() => {
+            if (lastError) {
+              finish('Error in expression: ' + lastError);
+              return;
+            }
             finish('Timeout: condition did not become truthy within ' + timeoutMs + 'ms');
           }, timeoutMs);
         });
