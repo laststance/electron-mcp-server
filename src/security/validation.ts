@@ -204,7 +204,13 @@ export class InputValidator {
   }
 
   /**
-   * Special validation for eval commands - validates the actual code to be executed
+   * Special validation for eval commands - validates the actual code to be executed.
+   *
+   * Defense-in-depth: DANGEROUS_KEYWORDS are screened on every eval payload regardless
+   * of whether it matches a `safePatterns` shortcut, because the generic property-access
+   * pattern (`/^[\w.[\]'"]+$/`) was previously letting `process.platform`,
+   * `globalThis.foo`, `__proto__.constructor` etc. through unchecked (Issue #9).
+   * The function-call / assignment / obfuscation checks are still gated by `isSafe`.
    */
   private static validateEvalContent(code: string): {
     errors: string[];
@@ -213,6 +219,15 @@ export class InputValidator {
     const errors: string[] = [];
     const riskFactors: string[] = [];
     const profile = SECURITY_PROFILES[this.securityLevel];
+
+    // Defense-in-depth: dangerous-keyword screening runs unconditionally.
+    for (const keyword of this.DANGEROUS_KEYWORDS) {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+      if (regex.test(code)) {
+        errors.push(`Dangerous keyword detected in eval: ${keyword}`);
+        riskFactors.push(`eval_dangerous_keyword_${keyword}`);
+      }
+    }
 
     // Allow simple safe operations
     const safePatterns = [
@@ -253,15 +268,6 @@ export class InputValidator {
       uiInteractionPatterns.some((pattern) => pattern.test(code.trim()));
 
     if (!isSafe) {
-      // Check for dangerous keywords in eval content
-      for (const keyword of this.DANGEROUS_KEYWORDS) {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-        if (regex.test(code)) {
-          errors.push(`Dangerous keyword detected in eval: ${keyword}`);
-          riskFactors.push(`eval_dangerous_keyword_${keyword}`);
-        }
-      }
-
       // Check for function calls based on security profile
       const hasFunctionCall = /\(\s*\)|\w+\s*\(/.test(code);
       if (hasFunctionCall) {
@@ -282,8 +288,11 @@ export class InputValidator {
         }
       }
 
-      // Check for assignment operations based on security profile
-      if (/=(?!=)/.test(code) && !profile.allowAssignments) {
+      // Match a real assignment `=` while excluding the comparison and arrow forms:
+      //   ==, ===, !=, !==, <=, >=, =>
+      // Lookbehind rejects `=` after [=!<>]; lookahead rejects `=` before [=>].
+      // Issue #21: previous `/=(?!=)/` flagged `===`/`!==`/arrow funcs as assignments.
+      if (/(?<![=!<>])=(?![=>])/.test(code) && !profile.allowAssignments) {
         errors.push(`Assignment operations in eval are restricted`);
         riskFactors.push('eval_assignment');
       }
