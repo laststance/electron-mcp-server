@@ -13,8 +13,14 @@ const schema = z.object({
 });
 
 /**
- * Navigate to a hash route via `history.pushState` + manual `hashchange`
- * dispatch (so React Router and similar listeners pick up the change).
+ * Navigate to a hash route via `history.pushState` followed by both `hashchange`
+ * and `popstate` dispatch.
+ *
+ * Why two events: legacy listeners (and code that wraps `window.location.hash`)
+ * watch `hashchange`, but react-router-dom v7's `HashRouter` (and other
+ * `createHashHistory` consumers) primarily subscribe to `popstate`. Issue #17
+ * showed the URL bar updating while `useLocation()` stayed on the old route
+ * because `pushState` does not fire `popstate` natively.
  *
  * Sanitization rejects `javascript:`, `<script`, and full URLs (`://`) to
  * keep this strictly an in-app navigation.
@@ -22,7 +28,7 @@ const schema = z.object({
 export const navigateToHash = defineCommand({
   name: 'electron_navigate_to_hash',
   description:
-    'Navigate to a hash route (e.g., "#create"). Uses pushState + manual hashchange so React Router picks it up.',
+    'Navigate to a hash route (e.g., "#create"). Uses pushState + manual hashchange + popstate dispatch so both legacy listeners and react-router-dom v7 HashRouter pick it up.',
   schema,
   operationType: 'command',
   async execute(args, target) {
@@ -43,13 +49,18 @@ export const navigateToHash = defineCommand({
       (function() {
         try {
           if (window.history && window.history.pushState) {
+            const oldHref = window.location.href;
             const newUrl = window.location.pathname + window.location.search + ${hashLiteral};
             window.history.pushState({}, '', newUrl);
 
             window.dispatchEvent(new HashChangeEvent('hashchange', {
               newURL: window.location.href,
-              oldURL: window.location.href.replace(${hashLiteral}, '')
+              oldURL: oldHref
             }));
+
+            // react-router-dom v7 HashRouter (createHashHistory) listens on popstate.
+            // pushState does not fire popstate natively, so dispatch it manually.
+            window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
 
             return 'Navigated to hash: ' + ${hashLiteral};
           } else {
