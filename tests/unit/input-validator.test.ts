@@ -47,6 +47,13 @@ describe('InputValidator.validateCommand (eval payloads)', () => {
       'Math.PI',
       'Date.now',
       'JSON.stringify',
+      // PR #22 CodeRabbit follow-up: the unconditional dangerous-keyword scan
+      // previously matched `\burl\b` case-insensitively and rejected the
+      // documented `document.URL` shortcut. The narrowed EVAL_CRITICAL_KEYWORDS
+      // list (no `url`/`crypto`/`path`/etc.) keeps this safe.
+      'document.URL',
+      'document.domain',
+      'window.location',
     ];
 
     it.each(safePayloads)('still allows known-safe pattern: %s', (code) => {

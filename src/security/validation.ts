@@ -75,6 +75,32 @@ export class InputValidator {
     'globalThis',
   ];
 
+  /**
+   * Subset of identifiers that must never appear in any eval payload, regardless
+   * of the security level or `safePatterns` allowlist. Compared to the broader
+   * {@link DANGEROUS_KEYWORDS} (used for non-eval command content), this list
+   * intentionally excludes Node.js module names that collide with legitimate
+   * web platform identifiers (`url` ↔ `document.URL`, `crypto` ↔ `window.crypto`,
+   * `path` ↔ pathname helpers, etc.) so we don't reject documented safe payloads
+   * while still catching the prototype-pollution / process-escape primitives that
+   * Issue #9 was about.
+   */
+  private static readonly EVAL_CRITICAL_KEYWORDS = [
+    'Function',
+    'constructor',
+    '__proto__',
+    'prototype',
+    'process',
+    'require',
+    'import',
+    'global',
+    'globalThis',
+    'child_process',
+    'worker_threads',
+    'vm',
+    'repl',
+  ];
+
   private static readonly XSS_PATTERNS = [
     /<script[^>]*>[\s\S]*?<\/script>/gi,
     /javascript:/gi,
@@ -206,11 +232,14 @@ export class InputValidator {
   /**
    * Special validation for eval commands - validates the actual code to be executed.
    *
-   * Defense-in-depth: DANGEROUS_KEYWORDS are screened on every eval payload regardless
-   * of whether it matches a `safePatterns` shortcut, because the generic property-access
-   * pattern (`/^[\w.[\]'"]+$/`) was previously letting `process.platform`,
-   * `globalThis.foo`, `__proto__.constructor` etc. through unchecked (Issue #9).
-   * The function-call / assignment / obfuscation checks are still gated by `isSafe`.
+   * Defense-in-depth: {@link EVAL_CRITICAL_KEYWORDS} are screened on every eval
+   * payload regardless of whether it matches a `safePatterns` shortcut, because
+   * the generic property-access pattern (`/^[\w.[\]'"]+$/`) was previously letting
+   * `process.platform`, `globalThis.foo`, `__proto__.constructor` etc. through
+   * unchecked (Issue #9). The list is intentionally narrower than the broader
+   * `DANGEROUS_KEYWORDS` used by `validateCommandContent`, so legitimate web
+   * platform expressions like `document.URL` are not flagged. The function-call
+   * / assignment / obfuscation checks are still gated by `isSafe`.
    */
   private static validateEvalContent(code: string): {
     errors: string[];
@@ -220,9 +249,12 @@ export class InputValidator {
     const riskFactors: string[] = [];
     const profile = SECURITY_PROFILES[this.securityLevel];
 
-    // Defense-in-depth: dangerous-keyword screening runs unconditionally.
-    for (const keyword of this.DANGEROUS_KEYWORDS) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+    // Defense-in-depth: scan only the eval-critical subset unconditionally so we
+    // catch prototype-pollution / process-escape primitives (Issue #9) without
+    // false-positiving identifiers shared with the web platform (Issue: PR #22
+    // CodeRabbit feedback — `document.URL` was being rejected by `\burl\b`).
+    for (const keyword of this.EVAL_CRITICAL_KEYWORDS) {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'g');
       if (regex.test(code)) {
         errors.push(`Dangerous keyword detected in eval: ${keyword}`);
         riskFactors.push(`eval_dangerous_keyword_${keyword}`);
