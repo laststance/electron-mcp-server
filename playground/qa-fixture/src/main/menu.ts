@@ -34,9 +34,13 @@ export function buildAppMenu(unsafeMode: boolean): Menu {
           click: () => {
             const filteredArgs = process.argv
               .slice(1)
-              .filter((arg) => arg !== '--unsafe-node-integration')
+              .filter(
+                (arg) =>
+                  arg !== '--unsafe-node-integration' &&
+                  arg !== '--safe-node-integration',
+              )
             const nextArgs = unsafeMode
-              ? filteredArgs
+              ? [...filteredArgs, '--safe-node-integration']
               : [...filteredArgs, '--unsafe-node-integration']
             app.relaunch({ args: nextArgs })
             app.exit(0)

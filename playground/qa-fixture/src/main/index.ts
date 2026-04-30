@@ -6,9 +6,14 @@ import { buildAppMenu } from './menu'
 //   1. CLI flag (works when launching the built app directly with `electron .`)
 //   2. Env var QA_FIXTURE_UNSAFE=1 (works through electron-vite dev, which
 //      otherwise rejects unknown CLI flags via its cac parser)
+//
+// CLI flags take precedence over the env var so that menu-driven relaunch
+// (`Cmd+Shift+N`) can flip back to safe mode by appending `--safe-node-integration`,
+// even when the original launch supplied QA_FIXTURE_UNSAFE=1.
+const hasUnsafeFlag = process.argv.includes('--unsafe-node-integration')
+const hasSafeFlag = process.argv.includes('--safe-node-integration')
 const unsafeMode =
-  process.argv.includes('--unsafe-node-integration') ||
-  process.env.QA_FIXTURE_UNSAFE === '1'
+  hasUnsafeFlag || (!hasSafeFlag && process.env.QA_FIXTURE_UNSAFE === '1')
 const modeLabel = unsafeMode ? 'unsafe' : 'safe'
 
 // CDP 9223 keeps this fixture isolated from skills-desktop on 9222 and is

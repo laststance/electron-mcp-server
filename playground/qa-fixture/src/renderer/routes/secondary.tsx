@@ -4,7 +4,7 @@ export function Secondary() {
       <h2>Secondary Window Route</h2>
       <p>
         This route is the default landing page for windows opened via{' '}
-        <kbd>Cmd</kbd>+<kbd>N</kbd>. Use it to verify multi-window MCP scenarios:
+        <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>N</kbd>. Use it to verify multi-window MCP scenarios:
       </p>
       <ul>
         <li>

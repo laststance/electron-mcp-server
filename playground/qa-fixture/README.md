@@ -37,7 +37,7 @@ Code session. Replace `<targetId>` with values returned by
 
 ### 1. Multi-window — `targetId` vs `windowTitle` precedence
 
-```
+```text
 1. Launch fixture → primary window opens at #/
 2. Cmd+N → secondary window opens at #/secondary
 3. list_electron_windows → expect 2 entries (titles include "Primary" and "Secondary")
@@ -50,11 +50,11 @@ Code session. Replace `<targetId>` with values returned by
 ### 2. `nodeIntegration:true` — Issue #9 reproduction
 
 ```bash
-# Re-launch with the unsafe flag
-pnpm dev -- --unsafe-node-integration
+# Re-launch in unsafe mode (dev — env var, since cac strips unknown flags)
+QA_FIXTURE_UNSAFE=1 pnpm dev
 ```
 
-```
+```text
 electron_eval('process.platform')
   → CURRENT (rc.1): returns "darwin" — validation shortcircuit lets it pass
   → AFTER FIX:      blocked with "Dangerous keyword detected: process"
@@ -62,7 +62,7 @@ electron_eval('process.platform')
 
 Test additional payloads to flesh out the eval validation regression suite:
 
-```
+```text
 electron_eval('global.x = 1')
 electron_eval('globalThis.foo')
 electron_eval('__proto__')
@@ -71,7 +71,7 @@ electron_eval('require("os").platform()')
 
 ### 3. Form widgets — `select_option`, `verify_form_state`
 
-```
+```text
 navigate_to_hash → /forms
 
 electron_click_by_selector  '[data-testid="radio-beta"]'
@@ -86,7 +86,7 @@ electron_query_visible_by_selector '[data-testid="hidden-input"]' → false
 
 ### 4. Drag-and-drop — `drag_from_to`
 
-```
+```text
 navigate_to_hash → /drag
 
 electron_drag_from_to
@@ -99,7 +99,7 @@ electron_query_text_by_selector '[data-testid="drag-status"]'
 
 ### 5. Scroll — `scroll_*`, `get_scroll_position`
 
-```
+```text
 navigate_to_hash → /scroll
 
 electron_scroll_to_element '[data-testid="scroll-target-bottom-right"]'
@@ -112,7 +112,7 @@ electron_query_text_by_selector '[data-testid="scroll-x"]' → "0"
 
 ### 6. Hover — `hover_by_selector`, `hover_by_text`
 
-```
+```text
 navigate_to_hash → /hover
 
 electron_hover_by_selector '[data-testid="hover-btn-save"]'
@@ -124,7 +124,7 @@ electron_query_text_by_selector '[data-testid="hover-active"]' → "delete"
 
 ### 7. Storage — `local_storage_*`, `session_storage_*`, `clear_storage`
 
-```
+```text
 navigate_to_hash → /storage
 
 electron_local_storage_set_item key:"theme" value:"dark"
@@ -136,7 +136,7 @@ electron_local_storage_get_item key:"theme" → null
 
 ### 8. Hash routing — `navigate_to_hash`, `wait_for_navigation`
 
-```
+```text
 electron_navigate_to_hash hash:"/forms"
 electron_wait_for_navigation
 electron_query_text_by_selector '[data-testid="current-path"]' → "/forms"
@@ -144,7 +144,7 @@ electron_query_text_by_selector '[data-testid="current-path"]' → "/forms"
 
 ### 9. Context menu — `right_click_by_selector`
 
-```
+```text
 navigate_to_hash → /context
 
 electron_right_click_by_selector '[data-testid="context-target"]'
@@ -156,7 +156,7 @@ electron_query_text_by_selector '[data-testid="context-last-action"]' → "Paste
 
 ### 10. App hotkey via menu — `send_keyboard_shortcut`
 
-```
+```text
 electron_send_keyboard_shortcut keys:["Meta", "n"]
 list_electron_windows → expect 2 windows now
 ```
