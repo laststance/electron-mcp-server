@@ -320,11 +320,23 @@ export class InputValidator {
         }
       }
 
-      // Match a real assignment `=` while excluding the comparison and arrow forms:
-      //   ==, ===, !=, !==, <=, >=, =>
-      // Lookbehind rejects `=` after [=!<>]; lookahead rejects `=` before [=>].
-      // Issue #21: previous `/=(?!=)/` flagged `===`/`!==`/arrow funcs as assignments.
-      if (/(?<![=!<>])=(?![=>])/.test(code) && !profile.allowAssignments) {
+      // Detect any assignment operator while excluding the comparison and arrow
+      // forms (`==`, `===`, `!=`, `!==`, `<=`, `>=`, `=>`).
+      //
+      // The standalone `=` branch uses a negative lookbehind (rejects `=` after
+      // `[=!<>]`) plus a negative lookahead (rejects `=` before `[=>]`).
+      // Issue #21: the previous `/=(?!=)/` flagged `===`/`!==`/arrow funcs as
+      // assignments.
+      //
+      // Compound assignment operators must be matched explicitly, because the
+      // lookbehind only inspects the single character before `=` — for `<<=`
+      // the `=` is preceded by `<`, which sits in the lookbehind exclusion set
+      // and would otherwise let `a <<= 1` bypass `allowAssignments` (PR #22
+      // CodeRabbit round 2). Longest alternatives are listed first so the
+      // engine prefers e.g. `>>>=` over the `>>=` substring.
+      const assignmentPattern =
+        /<<=|>>>=|>>=|\*\*=|&&=|\|\|=|\?\?=|[+\-*/%&|^]=|(?<![=!<>])=(?![=>])/;
+      if (assignmentPattern.test(code) && !profile.allowAssignments) {
         errors.push(`Assignment operations in eval are restricted`);
         riskFactors.push('eval_assignment');
       }

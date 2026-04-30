@@ -112,4 +112,39 @@ describe('InputValidator.validateCommand (eval payloads)', () => {
       );
     });
   });
+
+  describe('PR #22 round 2 — compound assignment operators', () => {
+    // The previous fix used `/(?<![=!<>])=(?![=>])/`, whose lookbehind only
+    // inspects one character. `<<=`, `>>=`, `>>>=` therefore slipped through
+    // because the `=` is preceded by `<` or `>`, which sit in the lookbehind
+    // exclusion set. The new pattern lists all compound operators explicitly.
+    const compoundAssignments = [
+      'window.foo += 1',
+      'window.foo -= 1',
+      'window.foo *= 2',
+      'window.foo /= 2',
+      'window.foo %= 2',
+      'window.foo **= 2',
+      'window.foo <<= 1',
+      'window.foo >>= 1',
+      'window.foo >>>= 1',
+      'window.foo &= 1',
+      'window.foo |= 1',
+      'window.foo ^= 1',
+      'window.foo &&= 1',
+      'window.foo ||= 1',
+      'window.foo ??= 1',
+    ];
+
+    it.each(compoundAssignments)('rejects compound assignment: %s', (code) => {
+      const result = InputValidator.validateCommand({
+        command: code,
+        operationType: 'eval',
+      });
+
+      expect(result.errors.some((message) => message.includes('Assignment operations'))).toBe(
+        true,
+      );
+    });
+  });
 });
