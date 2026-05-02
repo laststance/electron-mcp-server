@@ -164,3 +164,5 @@ Thumbs.db
 
 # Claude Code
 CLAUDE.md
+.claude/goal.json
+.claude/goal-notes.md

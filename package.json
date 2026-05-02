@@ -1,6 +1,6 @@
 {
   "name": "@laststance/electron-mcp-server",
-  "version": "2.0.0-rc.3",
+  "version": "2.0.0",
   "description": "MCP server for Electron application automation and management. See MCP_USAGE_GUIDE.md for proper argument structure examples.",
   "main": "dist/index.js",
   "bin": {

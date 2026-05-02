@@ -15,7 +15,7 @@ config({ quiet: true });
 const server = new Server(
   {
     name: 'electron-mcp-server',
-    version: '1.5.1',
+    version: '2.0.0',
   },
   {
     capabilities: {

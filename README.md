@@ -290,6 +290,34 @@ Add to your VS Code MCP settings:
 }
 ```
 
+### Claude Code (CLI)
+
+The fastest way to add this server to Claude Code is the `claude mcp add` command. Options come **before** the server name; the `--` separator marks where the spawn command begins.
+
+**Project-scoped (lives in `.mcp.json`, share via git):**
+
+```bash
+claude mcp add electron-mcp \
+  --env SECURITY_LEVEL=balanced \
+  -- npx -y @laststance/electron-mcp-server@latest
+```
+
+**User-scoped (available across every project on this machine):**
+
+```bash
+claude mcp add --scope user electron-mcp \
+  --env SECURITY_LEVEL=balanced \
+  -- npx -y @laststance/electron-mcp-server@latest
+```
+
+**Verify:**
+
+```bash
+claude mcp list
+```
+
+> 💡 On Windows, prefix the spawn command with `cmd /c` (e.g. `-- cmd /c npx -y @laststance/electron-mcp-server@latest`) so the npx shim resolves correctly.
+
 ### Cursor IDE Integration
 
 Cursor IDE supports MCP servers through its configuration file. Add to your Cursor MCP settings:
@@ -346,6 +374,29 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+
+### OpenAI Codex CLI
+
+The Codex CLI registers MCP servers through `~/.codex/config.toml` (CLI and IDE extension share the same file).
+
+**One-liner (preferred):**
+
+```bash
+codex mcp add electron-mcp -- npx -y @laststance/electron-mcp-server@latest
+```
+
+**Or edit `~/.codex/config.toml` directly:**
+
+```toml
+[mcp_servers.electron-mcp]
+command = "npx"
+args = ["-y", "@laststance/electron-mcp-server@latest"]
+
+[mcp_servers.electron-mcp.env]
+SECURITY_LEVEL = "balanced"
+```
+
+Codex launches the server automatically on session start and exposes its `electron_*` tools next to the built-ins.
 
 ### Global Installation
 
