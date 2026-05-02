@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CLICK_BY_SELECTOR_RATE_LIMIT_MS } from '../../constants';
 import { executeInElectron } from '../../utils/electron-connection';
 import { containsDangerousContent, escapeJsString } from '../shared/escaping';
 import { windowTargetFields } from '../shared/window-target';
@@ -18,14 +19,20 @@ const schema = z.object({
  * Replaces the old `click_button` subcommand (T14) — `click_button` defaulted
  * the selector to `'button'` and polluted `window[mcp_click_*]` with rate-limit
  * markers plus a `pointerEvents` hack. This command keeps a lightweight
- * 1-second debounce (`window[mcp_selector_click_*]`) but drops the worst of
- * those workarounds; callers needing the old behavior should pass an explicit
- * selector like `'button'`.
+ * `CLICK_BY_SELECTOR_RATE_LIMIT_MS` debounce (`window[mcp_selector_click_*]`)
+ * but drops the worst of those workarounds; callers needing the old behavior
+ * should pass an explicit selector like `'button'`.
+ *
+ * ⚠️ Rate-limit: same-selector clicks fired within
+ * `CLICK_BY_SELECTOR_RATE_LIMIT_MS` of the previous one are rejected with
+ * `"Click prevented - too soon after previous click"`. Serialize click flows
+ * (await each call) to avoid this — parallel rapid clicks on the same target
+ * are intentionally suppressed to prevent double-submits in React handlers.
  */
 export const clickBySelector = defineCommand({
   name: 'electron_click_by_selector',
   description:
-    'Click an element by CSS selector. Returns the element tag/text on success. Replaces the deprecated click_button — pass selector="button" to keep that behavior.',
+    'Click an element by CSS selector. Returns the element tag/text on success. Note: same-selector clicks within ~1s are rate-limited and return "Click prevented - too soon after previous click" — serialize calls (await each) to avoid this. Replaces the deprecated click_button — pass selector="button" to keep that behavior.',
   schema,
   operationType: 'command',
   async execute(args, target) {
@@ -45,7 +52,7 @@ export const clickBySelector = defineCommand({
             }
 
             const clickKey = 'mcp_selector_click_' + btoa(${escapedSelector}).slice(0, 10);
-            if (window[clickKey] && Date.now() - window[clickKey] < 1000) {
+            if (window[clickKey] && Date.now() - window[clickKey] < ${CLICK_BY_SELECTOR_RATE_LIMIT_MS}) {
               return 'Click prevented - too soon after previous click';
             }
             window[clickKey] = Date.now();

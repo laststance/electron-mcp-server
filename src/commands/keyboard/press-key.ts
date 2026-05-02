@@ -73,11 +73,27 @@ const MODIFIER_BIT: Readonly<Record<'Alt' | 'Ctrl' | 'Meta' | 'Shift', number>> 
  * `electron_send_keyboard_shortcut`, which uses synthetic events and is
  * cheaper. Use this when you need a key event the renderer treats as real
  * keyboard input.
+ *
+ * ⚠️ macOS OS-level text-editing shortcuts are NOT executed:
+ * `Cmd+A` (selectAll), `Cmd+C` / `Cmd+V` / `Cmd+X` (clipboard),
+ * `Cmd+Z` / `Cmd+Shift+Z` (undo/redo), and Electron `role: 'selectAll'`
+ * style menu items. CDP `Input.dispatchKeyEvent` only feeds a synthetic
+ * KeyboardEvent into the renderer; the OS keybinding layer that handles
+ * these shortcuts is bypassed. Playwright shares the same constraint.
+ *
+ * Workarounds:
+ * - select all text in an input/textarea:
+ *   `electron_eval` running `document.querySelector('...').select()` or
+ *   `el.setSelectionRange(0, el.value.length)`.
+ * - clipboard ops: `electron_eval` with the `navigator.clipboard.*` API.
+ * - app-level hotkeys (registered as `mousetrap`/`keydown` listeners on
+ *   `document`): prefer `electron_send_keyboard_shortcut` (synthetic event,
+ *   cheaper, and what app code expects).
  */
 export const pressKey = defineCommand({
   name: 'electron_press_key',
   description:
-    'Press a single key with optional modifiers via CDP. Use this for real keyboard input (cursor moves, IME) — for app hotkeys prefer electron_send_keyboard_shortcut.',
+    'Press a single key with optional modifiers via CDP. Use this for real keyboard input (cursor moves, IME) — for app hotkeys prefer electron_send_keyboard_shortcut. Note: macOS OS-level shortcuts (Cmd+A, Cmd+C/V/X, Cmd+Z) are bypassed by CDP synthetic events; use electron_eval (.select() / navigator.clipboard.*) instead.',
   schema,
   operationType: 'command',
   async execute(args, target) {

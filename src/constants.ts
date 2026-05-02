@@ -20,3 +20,18 @@ export const CDP_PORT_SCAN_END = 9230;
 
 /** Internal sentinel range for pool-managed CDP message IDs. Pool starts here. */
 export const CDP_POOL_MESSAGE_ID_START = 1;
+
+/**
+ * Rate-limit window for `electron_click_by_selector`. Same selector clicks
+ * within this window return "Click prevented - too soon after previous click"
+ * to suppress accidental double-firing in React event handlers.
+ */
+export const CLICK_BY_SELECTOR_RATE_LIMIT_MS = 1000;
+
+/**
+ * Rate-limit window for `electron_click_by_text` (renderer-side debounce in
+ * `generateClickByTextCommand`). Longer than the selector variant because
+ * text scoring + scrollIntoView animations can legitimately take ~1s, and
+ * the previous threshold (2000ms) was tuned empirically for React forms.
+ */
+export const CLICK_BY_TEXT_RATE_LIMIT_MS = 2000;
