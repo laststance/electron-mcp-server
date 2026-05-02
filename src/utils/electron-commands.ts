@@ -2,7 +2,8 @@
  * Enhanced Electron interaction commands for React-based applications
  * Addresses common issues with form interactions, event handling, and state management
  */
-import { CLICK_BY_TEXT_RATE_LIMIT_MS } from '../constants';
+import { CLICK_BY_TEXT_MIN_TEXT_SCORE, CLICK_BY_TEXT_RATE_LIMIT_MS } from '../constants';
+import { TEXT_MATCH_HELPERS_JS } from './text-matching';
 
 /**
  * Securely escape text input for JavaScript code generation
@@ -355,12 +356,16 @@ export function generateClickByTextCommand(text: string): string {
   return `
     (function() {
       const targetText = ${escapedText};  // Safe: JSON.stringify escapes quotes and special chars
-      
+
+      // Inlined helpers from src/utils/text-matching.ts (single source of truth,
+      // also exercised by tests/unit/text-matching.test.ts).
+      ${TEXT_MATCH_HELPERS_JS}
+
       // Deep DOM analysis function
       function analyzeElement(el) {
         const rect = el.getBoundingClientRect();
         const style = getComputedStyle(el);
-        
+
         return {
           element: el,
           text: (el.textContent || '').trim(),
@@ -374,88 +379,58 @@ export function generateClickByTextCommand(text: string): string {
           opacity: parseFloat(style.opacity) || 1
         };
       }
-      
-      // Score element relevance
+
+      // Score element relevance.
+      // textScore (0..100) is the gate — bonuses are tie-breakers on top.
+      // Pre-fix this function gave bonus-only scores to text-unrelated elements
+      // (e.g. "Heavy Math" matched "Fetch Data" via positional char similarity → #3).
       function scoreElement(analysis, target) {
-        let score = 0;
-        const text = analysis.text.toLowerCase();
-        const label = analysis.ariaLabel.toLowerCase();
-        const title = analysis.title.toLowerCase();
-        const targetLower = target.toLowerCase();
-        
-        // Exact match gets highest score
-        if (text === targetLower || label === targetLower || title === targetLower) score += 100;
-        
-        // Starts with target
-        if (text.startsWith(targetLower) || label.startsWith(targetLower)) score += 50;
-        
-        // Contains target
-        if (text.includes(targetLower) || label.includes(targetLower) || title.includes(targetLower)) score += 25;
-        
-        // Fuzzy matching for close matches
-        const similarity = Math.max(
-          calculateSimilarity(text, targetLower),
-          calculateSimilarity(label, targetLower),
-          calculateSimilarity(title, targetLower)
+        const textScore = scoreTextMatch(
+          analysis.text,
+          analysis.ariaLabel,
+          analysis.title,
+          target
         );
-        score += similarity * 20;
-        
-        // Bonus for interactive elements
+        if (textScore === 0) return { score: 0, textScore: 0 };
+
+        let score = textScore;
         if (analysis.isInteractive) score += 10;
-        
-        // Bonus for visibility
         if (analysis.isVisible) score += 15;
-        
-        // Bonus for larger elements (more likely to be main buttons)
         if (analysis.rect.width > 100 && analysis.rect.height > 30) score += 5;
-        
-        // Bonus for higher z-index (on top)
         score += Math.min(analysis.zIndex, 5);
-        
-        return score;
+        return { score: score, textScore: textScore };
       }
-      
-      // Simple string similarity function
-      function calculateSimilarity(str1, str2) {
-        const len1 = str1.length;
-        const len2 = str2.length;
-        const maxLen = Math.max(len1, len2);
-        if (maxLen === 0) return 0;
-        
-        let matches = 0;
-        const minLen = Math.min(len1, len2);
-        for (let i = 0; i < minLen; i++) {
-          if (str1[i] === str2[i]) matches++;
-        }
-        return matches / maxLen;
-      }
-      
+
       // Find all potentially clickable elements
       const allElements = document.querySelectorAll('*');
       const candidates = [];
-      
+
       for (let el of allElements) {
         const analysis = analyzeElement(el);
-        
+
         if (analysis.isVisible && (analysis.isInteractive || analysis.text || analysis.ariaLabel)) {
-          const score = scoreElement(analysis, targetText);
-          if (score > 5) { // Only consider elements with some relevance
-            candidates.push({ ...analysis, score });
+          const scored = scoreElement(analysis, targetText);
+          // textScore === 0 means no textual relation — drop it so bonuses
+          // alone (visibility/interactivity) cannot promote noise.
+          if (scored.textScore > 0) {
+            candidates.push({ ...analysis, score: scored.score, textScore: scored.textScore });
           }
         }
       }
-      
+
       if (candidates.length === 0) {
         return \`No clickable elements found containing text: "\${targetText}"\`;
       }
-      
+
       // Sort by score and get the best match
       candidates.sort((a, b) => b.score - a.score);
       const best = candidates[0];
-      
-      // Additional validation before clicking
-      if (best.score < 15) {
-        return \`Found potential matches but confidence too low (score: \${best.score}). Best match was: "\${best.text || best.ariaLabel}" - try being more specific.\`;
+
+      // Require strong textual evidence before clicking. CLICK_BY_TEXT_MIN_TEXT_SCORE
+      // is interpolated from src/utils/text-matching.ts and tracks the same
+      // calibration the unit tests assert (50 = "all target words at word boundaries").
+      if (best.textScore < ${CLICK_BY_TEXT_MIN_TEXT_SCORE}) {
+        return \`Found potential matches but confidence too low (textScore: \${best.textScore}, total: \${best.score}). Best match was: "\${best.text || best.ariaLabel}" - try being more specific.\`;
       }
       
       // Enhanced clicking for React components with duplicate prevention

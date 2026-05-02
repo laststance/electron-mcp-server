@@ -37,6 +37,21 @@ export const CLICK_BY_SELECTOR_RATE_LIMIT_MS = 1000;
 export const CLICK_BY_TEXT_RATE_LIMIT_MS = 2000;
 
 /**
+ * Minimum textual-match score required to accept an `electron_click_by_text`
+ * candidate. Below this, the command returns "confidence too low" instead of
+ * risking a misclick (#3).
+ *
+ * Calibration (see `scoreTextMatch` in src/utils/text-matching.ts):
+ *   - 100 = exact match
+ *   -  70 = target phrase appears at word boundary
+ *   -  50 = every target word matched at word boundary (any order)
+ *   - 10–19 = partial multi-word match
+ * Picking 50 rejects partial multi-word matches and bonus-only candidates,
+ * while accepting any field that contains all target words.
+ */
+export const CLICK_BY_TEXT_MIN_TEXT_SCORE = 50;
+
+/**
  * Prefix that `executeInElectron` (src/utils/electron-connection.ts) prepends
  * to every successful Runtime.evaluate result string. Centralized here so
  * `electron_eval` can detect the wrapper and avoid double-prefixing

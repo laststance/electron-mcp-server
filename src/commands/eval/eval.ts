@@ -60,36 +60,13 @@ export const evalCommand = defineCommand({
   schema,
   operationType: 'eval',
   async execute(args, target) {
-    const codeHash = Buffer.from(args.code).toString('base64').slice(0, 10);
-    const isStateTest =
-      args.code.includes('window.testState') ||
-      args.code.includes('persistent-test-value') ||
-      args.code.includes('window.testValue');
-
     const javascriptCode = `
       (function() {
         try {
-          const codeHash = '${codeHash}';
-          const isStateTest = ${isStateTest};
           const rawCode = ${JSON.stringify(args.code)};
-
-          if (!isStateTest && window._mcpExecuting && window._mcpExecuting[codeHash]) {
-            return { success: false, error: 'Code already executing', result: null };
-          }
-
-          window._mcpExecuting = window._mcpExecuting || {};
-          if (!isStateTest) {
-            window._mcpExecuting[codeHash] = true;
-          }
 
           let result;
           ${buildEvalIife(args.code)}
-
-          setTimeout(() => {
-            if (!isStateTest && window._mcpExecuting) {
-              delete window._mcpExecuting[codeHash];
-            }
-          }, 1000);
 
           if (result === undefined && !rawCode.includes('window.') && !rawCode.includes('document.') && !rawCode.includes('||')) {
             return { success: false, error: 'Command returned undefined - element may not exist or action failed', result: null };
@@ -116,6 +93,13 @@ export const evalCommand = defineCommand({
         }
       })()
     `;
+    // Note: the in-renderer "_mcpExecuting[codeHash]" reentrancy guard was
+    // removed in v2.0.1 (#10). The per-target serialization queue in
+    // src/utils/electron-connection.ts:_evaluateQueueByTarget now provides
+    // ordering guarantees, and the old guard's 10-char base64 hash collided
+    // for codes sharing a prefix (e.g. "document.title" and
+    // "document.body.children.length" → same slot → false positive
+    // "Code already executing").
 
     const rawResult = await executeInElectron(javascriptCode, target);
 

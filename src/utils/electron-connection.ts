@@ -150,6 +150,31 @@ export interface ExecuteInElectronOptions {
 }
 
 /**
+ * Per-target serialization queue for `executeInElectron` (#10).
+ *
+ * Why this exists:
+ * CDP's `Runtime.evaluate` does not serialize concurrent in-flight calls
+ * against the same execution context. v2.0.0 had an in-renderer reentrancy
+ * guard (`window._mcpExecuting[codeHash]`) in the eval IIFE, but its
+ * 10-character base64 hash collided for codes sharing a prefix — e.g.
+ * `document.title` and `document.body.children.length` both hashed to
+ * `ZG9jdW1lbn`, raising spurious "Code already executing" failures on
+ * legitimately distinct concurrent calls.
+ *
+ * v2.0.1 removes the in-renderer guard and serializes here instead: a
+ * Promise-chain queue keyed by `targetInfo.id`. Within a single target,
+ * synchronous calls run strictly sequentially. Across different targets they
+ * remain fully parallel.
+ *
+ * `awaitPromise: true` callers BYPASS the queue (see `executeInElectron`).
+ * Wait/observer commands are long-lived by design and must not block actions
+ * that fire the events they are observing.
+ *
+ * Exported for tests only — production code must not touch it.
+ */
+export const _evaluateQueueByTarget = new Map<string, Promise<unknown>>();
+
+/**
  * Execute JavaScript code in an Electron application via Chrome DevTools Protocol.
  * @param javascriptCode - Expression to run in the Electron renderer
  * @param target - Optional DevTools target; defaults to the first discovered window
@@ -168,6 +193,50 @@ export async function executeInElectron(
     throw new Error('No WebSocket debugger URL available');
   }
 
+  // awaitPromise=true callers (wait_for_*, scroll_*, eval IIFEs returning a
+  // Promise) are long-lived passive observers that must NOT block the queue.
+  // The canonical async-UI pattern is `Promise.all([wait_for_X, action])` —
+  // serializing the wait would queue the action behind it, the action's side
+  // effect (which the wait is observing) never fires, the wait times out and
+  // the action runs belatedly. Bypass the queue: CDP itself happily handles
+  // concurrent in-flight `Runtime.evaluate` calls; the queue only exists to
+  // give synchronous evals on the same target a deterministic order.
+  if (options?.awaitPromise === true) {
+    return doEvaluate(targetInfo, javascriptCode, options);
+  }
+
+  // Per-target serialization (#10) for synchronous evals. Chain this call after
+  // the previous one for the same targetId. `.catch(() => undefined)` prevents
+  // a previous failure from failing this caller — each call's outcome is its own.
+  const queueKey = targetInfo.id;
+  const previous = _evaluateQueueByTarget.get(queueKey) ?? Promise.resolve();
+  const next = previous
+    .catch(() => undefined)
+    .then(() => doEvaluate(targetInfo, javascriptCode, options));
+
+  _evaluateQueueByTarget.set(queueKey, next);
+
+  // Cleanup tail entries to keep the map bounded. Only delete if we are still
+  // the tail; otherwise a later caller has chained on and owns the slot.
+  // Use .then(cleanup, cleanup) instead of .finally() so the cleanup chain
+  // observes any rejection — `.finally` returns a new Promise that re-throws,
+  // and we never await it, which would otherwise surface as an unhandled
+  // rejection. The real caller still sees rejection via `await next`.
+  const cleanup = () => {
+    if (_evaluateQueueByTarget.get(queueKey) === next) {
+      _evaluateQueueByTarget.delete(queueKey);
+    }
+  };
+  next.then(cleanup, cleanup);
+
+  return next;
+}
+
+async function doEvaluate(
+  targetInfo: DevToolsTarget,
+  javascriptCode: string,
+  options?: ExecuteInElectronOptions,
+): Promise<string> {
   logger.debug(`Executing JavaScript code on ${targetInfo.title}...`);
   let payload: RuntimeEvaluateResultPayload;
   try {

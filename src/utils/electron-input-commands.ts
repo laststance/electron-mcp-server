@@ -474,7 +474,35 @@ export function generatePageStructureCommand(): string {
       };
       
       function detectFramework() {
+        // Legacy React signals (React ≤17, or when bundler exposes window.React).
         if (window.React || document.querySelector('[data-reactroot]')) return 'React';
+        // React 18+ Fiber roots: each mount-point DOM node carries a property
+        // named like "__reactContainer$<random>". Scan common root selectors
+        // (#root for Vite/CRA, #app for many setups, #__next for Next.js)
+        // plus the first few body children to catch arbitrary mount points.
+        var fiberRootSelectors = ['#root', '#app', '#__next'];
+        var fiberCandidates = [];
+        for (var i = 0; i < fiberRootSelectors.length; i++) {
+          var rootEl = document.querySelector(fiberRootSelectors[i]);
+          if (rootEl) fiberCandidates.push(rootEl);
+        }
+        if (document.body) {
+          var bodyChildren = document.body.children;
+          for (var j = 0; j < Math.min(bodyChildren.length, 5); j++) {
+            fiberCandidates.push(bodyChildren[j]);
+          }
+        }
+        for (var k = 0; k < fiberCandidates.length; k++) {
+          var keys = Object.keys(fiberCandidates[k]);
+          for (var m = 0; m < keys.length; m++) {
+            if (keys[m].indexOf('__reactContainer') === 0) return 'React';
+          }
+        }
+        // React DevTools hook with attached renderers (covers exotic mounts).
+        var devtoolsHook = window.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+        if (devtoolsHook && devtoolsHook.renderers && devtoolsHook.renderers.size > 0) {
+          return 'React';
+        }
         if (window.Vue || document.querySelector('[data-v-]')) return 'Vue';
         if (window.angular || document.querySelector('[ng-version]')) return 'Angular';
         return 'Unknown';
