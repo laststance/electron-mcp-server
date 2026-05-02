@@ -50,7 +50,7 @@ const staticTools = [
   {
     name: ToolName.TAKE_SCREENSHOT,
     description:
-      'Take a screenshot of any running Electron application window. Returns base64 image data for AI analysis. No files created unless outputPath is specified. Pass `targetId` (from electron_list_windows) for unambiguous targeting when multiple Electron apps run on different debugging ports — `targetId` takes precedence over `windowTitle`.',
+      'Take a screenshot of any running Electron application window. Returns base64 image data for AI analysis. No files created unless outputPath is specified. Pass `targetId` (from list_electron_windows) for unambiguous targeting when multiple Electron apps run on different debugging ports — `targetId` takes precedence over `windowTitle`.',
     inputSchema: zodToJsonSchema(TakeScreenshotSchema) as ToolInput,
   },
   {

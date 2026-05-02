@@ -38,7 +38,7 @@ export const getScrollPosition = defineCommand({
   operationType: 'query',
   async execute(args, target) {
     if (args.selector !== undefined && containsDangerousContent(args.selector)) {
-      return 'Invalid selector: contains dangerous content';
+      return JSON.stringify({ error: 'Invalid selector: contains dangerous content' });
     }
 
     const selectorLiteral = args.selector === undefined ? 'null' : escapeJsString(args.selector);
@@ -74,7 +74,7 @@ export const getScrollPosition = defineCommand({
             maxScrollY: maxScrollY
           });
         } catch (e) {
-          return 'Error reading scroll position: ' + e.message;
+          return JSON.stringify({ error: 'Error reading scroll position: ' + e.message });
         }
       })();
     `;
