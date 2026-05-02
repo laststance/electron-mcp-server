@@ -146,16 +146,37 @@ function encryptScreenshotData(buffer: Buffer): EncryptedScreenshot {
   }
 }
 
-// Helper function to take screenshot using only Playwright CDP (Chrome DevTools Protocol)
-export async function takeScreenshot(
-  outputPath?: string,
-  windowTitle?: string,
-): Promise<{
+/**
+ * Capture a PNG screenshot of an Electron app via Playwright over CDP.
+ *
+ * Targeting precedence (matches `electron_*` tools that share `targetId` /
+ * `windowTitle` — see `src/commands/shared/window-target.ts`):
+ *   1. `targetId` — exact CDP target match across every running app.
+ *   2. `windowTitle` — first app with a target whose title matches (case-
+ *      insensitive substring).
+ *   3. neither — first app returned by `scanForElectronApps`.
+ *
+ * Without `targetId`, parallel Electron apps (skills-desktop on :9222 and
+ * qa-fixture on :9223, for example) can collide on `apps[0]` and silently
+ * return the wrong app's screenshot — that's the bug fixed in #18.
+ *
+ * @param options.outputPath  Optional path to save the PNG (and an
+ *   `.encrypted` companion). When omitted, returns base64 only.
+ * @param options.windowTitle Case-insensitive substring matched against page
+ *   titles. Used both to pick the app and to pick the right page within it.
+ * @param options.targetId    Exact CDP target ID. Wins over `windowTitle`.
+ */
+export async function takeScreenshot(options: {
+  outputPath?: string;
+  windowTitle?: string;
+  targetId?: string;
+}): Promise<{
   filePath?: string;
   base64: string;
   data: string;
   error?: string;
 }> {
+  const { outputPath, windowTitle, targetId } = options;
   // Validate output path for security
   if (outputPath && !validateScreenshotPath(outputPath)) {
     throw new Error(
@@ -167,6 +188,7 @@ export async function takeScreenshot(
   logger.info('📸 Taking screenshot of Electron application', {
     outputPath,
     windowTitle,
+    targetId,
     timestamp: new Date().toISOString(),
   });
   try {
@@ -176,9 +198,17 @@ export async function takeScreenshot(
       throw new Error('No running Electron applications found with remote debugging enabled');
     }
 
-    // Use the first app found (or find by title if specified)
+    // Pick the app: targetId > windowTitle > first app.
     let targetApp = apps[0];
-    if (windowTitle) {
+    if (targetId) {
+      const idMatchedApp = apps.find((app) => app.targets.some((target) => target.id === targetId));
+      if (!idMatchedApp) {
+        throw new Error(
+          `No Electron app found with targetId=${targetId}. Use electron_list_windows to enumerate available targets.`,
+        );
+      }
+      targetApp = idMatchedApp;
+    } else if (windowTitle) {
       const namedApp = apps.find((app) =>
         app.targets.some((target) =>
           target.title?.toLowerCase().includes(windowTitle.toLowerCase()),
@@ -206,7 +236,13 @@ export async function takeScreenshot(
       throw new Error('No pages found in the browser context');
     }
 
-    // Find the main application page (skip DevTools pages)
+    // Find the main application page (skip DevTools pages).
+    // Page selection mirrors the app-level precedence:
+    //   targetId — match Playwright page URL containing the target id (CDP
+    //     exposes target id only on browser-level Targets; on Page level we
+    //     fall back to URL/title heuristics).
+    //   windowTitle — first non-DevTools page whose title matches.
+    //   neither — first non-DevTools page.
     let targetPage = pages[0];
     for (const page of pages) {
       const url = page.url();
@@ -219,8 +255,12 @@ export async function takeScreenshot(
         title &&
         !title.includes('DevTools')
       ) {
-        // If windowTitle is specified, try to match it
-        if (windowTitle && title.toLowerCase().includes(windowTitle.toLowerCase())) {
+        if (targetId) {
+          if (url.includes(targetId)) {
+            targetPage = page;
+            break;
+          }
+        } else if (windowTitle && title.toLowerCase().includes(windowTitle.toLowerCase())) {
           targetPage = page;
           break;
         } else if (!windowTitle) {

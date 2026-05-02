@@ -1,4 +1,5 @@
 import WebSocket from 'ws';
+import { EXECUTE_IN_ELECTRON_RESULT_PREFIX } from '../constants';
 import { CdpConnectionPool, type RuntimeEvaluateResultPayload } from './cdp-pool';
 import { scanForElectronApps, findMainTarget } from './electron-discovery';
 import { logger } from './logger';
@@ -203,16 +204,16 @@ function formatEvaluateResult(payload: RuntimeEvaluateResultPayload): string {
       return `✅ Command executed: ${String(result.value)}`;
     case 'number':
     case 'boolean':
-      return `✅ Result: ${String(result.value)}`;
+      return `${EXECUTE_IN_ELECTRON_RESULT_PREFIX}${String(result.value)}`;
     case 'undefined':
       return `✅ Command executed successfully`;
     case 'object': {
-      if (result.value === null) return `✅ Result: null`;
-      if (result.value === undefined) return `✅ Result: undefined`;
+      if (result.value === null) return `${EXECUTE_IN_ELECTRON_RESULT_PREFIX}null`;
+      if (result.value === undefined) return `${EXECUTE_IN_ELECTRON_RESULT_PREFIX}undefined`;
       try {
-        return `✅ Result: ${JSON.stringify(result.value, null, 2)}`;
+        return `${EXECUTE_IN_ELECTRON_RESULT_PREFIX}${JSON.stringify(result.value, null, 2)}`;
       } catch {
-        return `✅ Result: [Object - could not serialize: ${
+        return `${EXECUTE_IN_ELECTRON_RESULT_PREFIX}[Object - could not serialize: ${
           result.className || result.objectId || 'unknown'
         }]`;
       }

@@ -20,3 +20,12 @@ export const CDP_PORT_SCAN_END = 9230;
 
 /** Internal sentinel range for pool-managed CDP message IDs. Pool starts here. */
 export const CDP_POOL_MESSAGE_ID_START = 1;
+
+/**
+ * Prefix that `executeInElectron` (src/utils/electron-connection.ts) prepends
+ * to every successful Runtime.evaluate result string. Centralized here so
+ * `electron_eval` can detect the wrapper and avoid double-prefixing
+ * (`✅ Result: ✅ Result: ...`) when its IIFE return is fed back through the
+ * same helper. See #11 for the original double-prefix bug.
+ */
+export const EXECUTE_IN_ELECTRON_RESULT_PREFIX = '✅ Result: ';

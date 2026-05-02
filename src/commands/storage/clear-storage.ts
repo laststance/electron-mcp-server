@@ -3,13 +3,35 @@ import { executeInElectron } from '../../utils/electron-connection';
 import { windowTargetFields } from '../shared/window-target';
 import { defineCommand } from '../types';
 
+/**
+ * Some MCP clients serialize array fields as a JSON-encoded string when the
+ * underlying transport flattens arguments (observed in #15 — `Expected array,
+ * received string at scopes`). Accept both shapes via `z.preprocess`: parse a
+ * string that looks like a JSON array, otherwise pass the value through
+ * untouched and let the inner schema flag genuine type errors.
+ *
+ * @example
+ *   coerceScopes('["local","session"]') // => ['local', 'session']
+ *   coerceScopes(['local', 'cookies'])  // => ['local', 'cookies'] (untouched)
+ *   coerceScopes('local')               // => 'local' (will fail z.array check)
+ */
+function coerceScopes(rawScopes: unknown): unknown {
+  if (typeof rawScopes !== 'string') return rawScopes;
+  const trimmed = rawScopes.trim();
+  if (!trimmed.startsWith('[')) return rawScopes;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return rawScopes;
+  }
+}
+
 const schema = z.object({
   ...windowTargetFields,
   scopes: z
-    .array(z.enum(['local', 'session', 'cookies']))
-    .min(1)
+    .preprocess(coerceScopes, z.array(z.enum(['local', 'session', 'cookies'])).min(1))
     .describe(
-      'Storage scopes to clear. Cookies are cleared for the current document.cookie origin only.',
+      'Storage scopes to clear. Cookies are cleared for the current document.cookie origin only. Accepts a JSON-encoded array string for clients that serialize arrays as strings.',
     ),
 });
 

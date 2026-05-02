@@ -111,8 +111,22 @@ These four tools kept their names and schemas. No migration needed:
 
 - `get_electron_window_info`
 - `list_electron_windows`
-- `take_screenshot`
 - `read_electron_logs`
+
+> **v2.0.0-rc.3 update (#18)** — `take_screenshot` was renamed to
+> `electron_take_screenshot` and now accepts an optional `targetId` (CDP target
+> ID) so multi-app environments can disambiguate which Electron window to
+> capture. Precedence is `targetId` > `windowTitle` > first detected app —
+> the same precedence used by every other `electron_*` tool. Update calls:
+>
+> ```jsonc
+> // v2.0.0-rc.2 and earlier
+> { "tool": "take_screenshot", "args": { "windowTitle": "QA Fixture" } }
+>
+> // v2.0.0-rc.3+
+> { "tool": "electron_take_screenshot",
+>   "args": { "targetId": "<from electron_list_windows>" } }
+> ```
 
 ---
 

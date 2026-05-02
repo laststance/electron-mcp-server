@@ -19,7 +19,12 @@ describe('SecurityManager Unit Tests', () => {
     });
 
     it('should not sandbox simple command names', () => {
-      const simpleCommands = ['get_window_info', 'take_screenshot', 'get_title', 'get_url'];
+      const simpleCommands = [
+        'get_window_info',
+        'electron_take_screenshot',
+        'get_title',
+        'get_url',
+      ];
 
       simpleCommands.forEach((command) => {
         const result = securityManager.shouldSandboxCommand(command);

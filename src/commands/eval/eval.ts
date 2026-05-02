@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EXECUTE_IN_ELECTRON_RESULT_PREFIX } from '../../constants';
 import { executeInElectron } from '../../utils/electron-connection';
 import { windowTargetFields } from '../shared/window-target';
 import { defineCommand } from '../types';
@@ -100,7 +101,11 @@ export const evalCommand = defineCommand({
             return { success: false, error: 'Command returned false - action likely failed', result: false };
           }
 
-          return { success: true, error: null, result: result };
+          // Normalize undefined to null so JSON.stringify keeps the 'result' key.
+          // Without this, JSON.stringify({ result: undefined }) → '{}' and the
+          // handler can't distinguish "missing" from "explicitly undefined".
+          // Reported in #11 (electron_eval response omits 'result' on undefined).
+          return { success: true, error: null, result: typeof result === 'undefined' ? null : result };
         } catch (error) {
           return {
             success: false,
@@ -114,19 +119,27 @@ export const evalCommand = defineCommand({
 
     const rawResult = await executeInElectron(javascriptCode, target);
 
+    // executeInElectron wraps every successful return in `✅ Result: <value>`
+    // (see src/utils/electron-connection.ts:206-215). Our IIFE returns a JSON
+    // object, so the prefix needs to be stripped before JSON.parse — otherwise
+    // parsing fails and the fallback path below double-wraps to
+    // `✅ Result: ✅ Result: { ... }` (#11).
+    const jsonPayload = rawResult.startsWith(EXECUTE_IN_ELECTRON_RESULT_PREFIX)
+      ? rawResult.slice(EXECUTE_IN_ELECTRON_RESULT_PREFIX.length)
+      : rawResult;
+
     try {
-      const parsed = JSON.parse(rawResult) as StructuredEvalResult;
+      const parsed = JSON.parse(jsonPayload) as StructuredEvalResult;
       if (parsed && typeof parsed === 'object' && 'success' in parsed) {
         if (!parsed.success) {
           return `❌ Command failed: ${parsed.error}${
             parsed.stack ? '\nStack: ' + parsed.stack : ''
           }`;
         }
-        return `✅ Command successful${
-          parsed.result !== null && parsed.result !== undefined
-            ? ': ' + JSON.stringify(parsed.result)
-            : ''
-        }`;
+        // parsed.result is now always present (null when underlying value was
+        // undefined, see IIFE comment). Emit `result: null` explicitly so the
+        // caller can rely on the key existing.
+        return `✅ Command successful: ${JSON.stringify(parsed.result ?? null)}`;
       }
     } catch {
       // Fall through to legacy formatting below.
@@ -136,6 +149,10 @@ export const evalCommand = defineCommand({
       return `⚠️ Command executed but returned ${rawResult || 'empty'} - this may indicate the element wasn't found or the action failed`;
     }
 
-    return `✅ Result: ${rawResult}`;
+    // Guard against double-prefixing if rawResult already starts with the
+    // executeInElectron prefix (we couldn't parse the inner payload as JSON).
+    return rawResult.startsWith(EXECUTE_IN_ELECTRON_RESULT_PREFIX)
+      ? rawResult
+      : `${EXECUTE_IN_ELECTRON_RESULT_PREFIX}${rawResult}`;
   },
 });

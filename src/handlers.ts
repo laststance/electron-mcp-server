@@ -66,7 +66,7 @@ export async function handleToolCall(request: z.infer<typeof CallToolRequestSche
 
       case ToolName.TAKE_SCREENSHOT: {
         const securityResult = await securityManager.executeSecurely({
-          command: 'take_screenshot',
+          command: 'electron_take_screenshot',
           args,
           sourceIP,
           userAgent,
@@ -79,8 +79,8 @@ export async function handleToolCall(request: z.infer<typeof CallToolRequestSche
             isError: true,
           };
         }
-        const { outputPath, windowTitle } = TakeScreenshotSchema.parse(args);
-        const result = await takeScreenshot(outputPath, windowTitle);
+        const { outputPath, windowTitle, targetId } = TakeScreenshotSchema.parse(args);
+        const result = await takeScreenshot({ outputPath, windowTitle, targetId });
 
         const content: any[] = [];
         if (result.filePath) {
