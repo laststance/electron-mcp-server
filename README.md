@@ -226,7 +226,8 @@ See [SECURITY_CONFIG.md](./SECURITY_CONFIG.md) for detailed security documentati
 | "The provided selector is empty" | Passing string instead of object | Use `{"selector": "..."}`      |
 | "Element not found"              | Wrong selector                   | Use `get_page_structure` first |
 | "Command blocked"                | Security restriction             | Check security level settings  |
-| "Click prevented - too soon"     | Rapid consecutive clicks         | Wait before retrying           |
+| "Click prevented - too soon after previous click" | Same target clicked within `~1s` (`click_by_selector`) / `~2s` (`click_by_text`) — intentional React anti-double-submit debounce | Serialize calls (`await` each) or pass a different selector / text |
+| `Cmd+A` / `Cmd+C` / `Cmd+V` does nothing in `electron_press_key` | macOS OS-level text-editing shortcuts are bypassed by CDP `Input.dispatchKeyEvent` (synthetic events only — same constraint as Playwright) | Use `electron_eval` with `el.select()` / `el.setSelectionRange(...)` / `navigator.clipboard.*`; for app-level hotkeys use `electron_send_keyboard_shortcut` |
 
 ## 🛠️ Security Features
 

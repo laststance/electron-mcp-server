@@ -20,11 +20,19 @@ const schema = z.object({
  *
  * Caveat: short strings can false-positive on multiple candidates — see
  * GitHub issue #3. Phase 4 (T25-T28) will offer CDP-level alternatives.
+ *
+ * ⚠️ Rate-limit: same-element clicks fired within
+ * `CLICK_BY_TEXT_RATE_LIMIT_MS` of the previous one return an error string
+ * containing `"Element click prevented - too soon after previous click"`
+ * (the underlying `throw` is caught and surfaced as a returned failure
+ * message). The window is deliberately longer than the selector variant
+ * because text scoring + `scrollIntoView({ behavior: 'smooth' })` can
+ * legitimately take ~1s. Serialize click flows (await each call) to avoid this.
  */
 export const clickByText = defineCommand({
   name: 'electron_click_by_text',
   description:
-    'Click an element by visible text, aria-label, or title. Best for buttons/links. Returns confidence score on match.',
+    'Click an element by visible text, aria-label, or title. Best for buttons/links. Returns confidence score on match. Note: same-element clicks within ~2s are rate-limited and return an error containing "Element click prevented - too soon after previous click" — serialize calls (await each) to avoid this.',
   schema,
   operationType: 'command',
   async execute(args, target) {

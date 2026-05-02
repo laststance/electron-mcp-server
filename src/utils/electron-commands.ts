@@ -2,6 +2,7 @@
  * Enhanced Electron interaction commands for React-based applications
  * Addresses common issues with form interactions, event handling, and state management
  */
+import { CLICK_BY_TEXT_RATE_LIMIT_MS } from '../constants';
 
 /**
  * Securely escape text input for JavaScript code generation
@@ -463,8 +464,11 @@ export function generateClickByTextCommand(text: string): string {
         const elementId = element.id || element.className || element.textContent?.slice(0, 20) || 'element';
         const clickKey = 'mcp_click_text_' + btoa(elementId).slice(0, 10);
         
-        // Check if this element was recently clicked
-        if (window[clickKey] && Date.now() - window[clickKey] < 2000) {
+        // Check if this element was recently clicked.
+        // Threshold is sourced from CLICK_BY_TEXT_RATE_LIMIT_MS in src/constants.ts
+        // (interpolated below) so the renderer-side debounce stays in sync with
+        // the value documented in the tool description.
+        if (window[clickKey] && Date.now() - window[clickKey] < ${CLICK_BY_TEXT_RATE_LIMIT_MS}) {
           throw new Error('Element click prevented - too soon after previous click');
         }
         
